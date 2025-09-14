@@ -16,6 +16,8 @@ contract ProtocolsContract is ReentrancyGuard {
     address private _filNoteContract;
     uint256 private _fundingAmount;
     uint256 private _poolAmount;
+    bool private _stopped;
+
     
     constructor(uint64 noteId, address noteCreator,address noteInvestor) payable {
         _id = noteId;
@@ -36,11 +38,16 @@ contract ProtocolsContract is ReentrancyGuard {
         emit Received(msg.sender, msg.value);
     }
 
+    modifier whenNotStopped() {
+        if (_stopped) revert Types.NotPermission();
+        _;
+    }
+
     function getProtocolInfo() public view returns (Types.Note memory) {
          return IFilNoteContract(_filNoteContract).getNote(_id);
     }
 
-    function withdrawFundingAmount() public nonReentrant {
+    function withdrawFundingAmount() public nonReentrant whenNotStopped{
         Types.Note memory note = getProtocolInfo();
         if(note.status != uint8(Types.NoteStatus.ACTIVE)) revert Types.InvalidNoteStatus();
         if(msg.sender != _creator) revert Types.NotPermission();
@@ -52,7 +59,7 @@ contract ProtocolsContract is ReentrancyGuard {
         emit WithdrawFundingAmount(_creator, amount);
     }
 
-    function spWithdrawPoolAmount(uint256 amount) public nonReentrant {
+    function spWithdrawPoolAmount(uint256 amount) public nonReentrant whenNotStopped{
         Types.Note memory note = getProtocolInfo();
         if (msg.sender != _creator) revert Types.NotPermission();
         if (amount > _poolAmount) revert Types.InvalidAmount();
@@ -72,7 +79,7 @@ contract ProtocolsContract is ReentrancyGuard {
         emit WithdrawPoolAmount(_creator, amount);
     }
 
-    function investorWithdrawPoolAmount() public nonReentrant {
+    function investorWithdrawPoolAmount() public nonReentrant whenNotStopped{
         Types.Note memory note = getProtocolInfo();
         if(note.status != uint8(Types.NoteStatus.ACTIVE)) revert Types.InvalidNoteStatus();
         if(msg.sender != _investor) revert Types.NotPermission();
@@ -96,6 +103,7 @@ contract ProtocolsContract is ReentrancyGuard {
 
     function stopProtocol() public {
         if(msg.sender != _filNoteContract) revert Types.NotPermission();
+        _stopped = true;
         uint256 payout = _poolAmount;
         _poolAmount = 0;
         (bool ok, ) = _investor.call{value: payout}("");

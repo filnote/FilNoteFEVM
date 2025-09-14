@@ -6,6 +6,7 @@ import { Types } from "./utils/Types.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
+
 contract FilNoteContract is Ownable, ReentrancyGuard {
     constructor() Ownable(msg.sender) {}
 
