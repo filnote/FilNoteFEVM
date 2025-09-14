@@ -39,4 +39,6 @@ library Types {
     error NotPermission();
     error TransferFailed();
     error NotMatured();
+    error InvalidPlatformFee();
+    error InvalidAddress();
 }

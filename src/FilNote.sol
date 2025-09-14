@@ -12,9 +12,14 @@ interface IProtocolsContract {
 }
 
 contract FilNoteContract is Ownable, ReentrancyGuard {
-    constructor() Ownable(msg.sender) {}
+    constructor() Ownable(msg.sender) {
+        _platformFee = 200;
+        _platformFeeRecipient = msg.sender;
+    }
 
     uint64 private _nextId = 1;
+    uint256 private _platformFee;
+    address private _platformFeeRecipient;
     
     mapping(uint64 => Types.Note) internal _notes;
     mapping(address => uint64[]) internal _notesByCreator;
@@ -38,18 +43,26 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
         uint64 indexed id,
         uint8 status
     );
+    event PlatformFeeChanged(
+        uint256 platformFee,
+        address platformFeeRecipient
+    );
+    event WithdrawPlatformFee(
+        uint256 platformFee,
+        address platformFeeRecipient
+    );
 
     modifier noteExists(uint64 id) {
         if (_notes[id].id == 0) revert Types.NoNote();
         _;
     }
      
-    
+ 
     function getNote(uint64 id) public view noteExists(id) returns (Types.Note memory) {
         return _notes[id];
     }
     
-
+ 
     function getNotes(uint64[] calldata ids) external view returns (Types.Note[] memory result) {
         result = new Types.Note[](ids.length);
         for (uint256 i; i < ids.length; ++i) {
@@ -115,15 +128,21 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
         if(msg.value != note.targetAmount) revert Types.InvalidAmount();
         if (block.timestamp >= note.expiryTime) revert Types.InvalidNoteStatus();
         note.status = uint8(Types.NoteStatus.ACTIVE);
-        ProtocolsContract protocolContract = new ProtocolsContract{value: msg.value}(
+        uint256 payoutPlatform = (msg.value * _platformFee) / 10000;
+        uint256 payoutCreator = msg.value - payoutPlatform;
+        (bool ok, ) = _platformFeeRecipient.call{value: payoutPlatform}("");
+        if(!ok) revert Types.TransferFailed();
+        ProtocolsContract protocolContract = new ProtocolsContract{value: payoutCreator}(
             note.id,
             note.creator,
-            msg.sender
+            msg.sender,
+            _platformFee
         );
         note.investor = msg.sender;
         note.protocolContract = address(protocolContract);
         _notesByInvestor[msg.sender].push(id);
         emit Investment(id, msg.sender, msg.value, address(protocolContract));
+        emit WithdrawPlatformFee(payoutPlatform, _platformFeeRecipient);
         return address(protocolContract);
     }
 
@@ -170,6 +189,26 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
         IProtocolsContract(note.protocolContract).stopProtocol();
         emit NoteStatusChanged(id, uint8(Types.NoteStatus.STOP));
         return id;
+    }
+
+    function setPlatformFee(uint256 platformFee) external onlyOwner {
+        if(platformFee < 0 || platformFee > 10_000) revert Types.InvalidPlatformFee();
+        _platformFee = platformFee;
+        emit PlatformFeeChanged(platformFee, _platformFeeRecipient);
+    }
+
+    function setPlatformFeeRecipient(address platformFeeRecipient) external onlyOwner {
+        if(platformFeeRecipient == address(0)) revert Types.InvalidAddress();
+        _platformFeeRecipient = platformFeeRecipient;
+        emit PlatformFeeChanged(_platformFee, platformFeeRecipient);
+    }
+
+    function getPlatformFee() external view returns (uint256) {
+        return _platformFee;
+    }
+
+    function getPlatformFeeRecipient() external view returns (address) {
+        return _platformFeeRecipient;
     }
 
 }

@@ -17,15 +17,17 @@ contract ProtocolsContract is ReentrancyGuard {
     address private _filNoteContract;
     uint256 private _fundingAmount;
     uint256 private _poolAmount;
+    uint256 private _platformFee;
     bool private _stopped;
 
     
-    constructor(uint64 noteId, address noteCreator,address noteInvestor) payable {
+    constructor(uint64 noteId, address noteCreator,address noteInvestor,uint256 platformFee) payable {
         _id = noteId;
         _creator = noteCreator;
         _investor = noteInvestor;
         _fundingAmount = msg.value;
         _filNoteContract = msg.sender;
+        _platformFee = platformFee;
         emit ProtocolCreated(noteId, noteCreator, noteInvestor);
     }
 
@@ -45,15 +47,15 @@ contract ProtocolsContract is ReentrancyGuard {
         _;
     }
 
+ 
     function _minReserve(Types.Note memory n) internal pure returns (uint256) {
         uint256 interest = (n.targetAmount * n.interestRateBps * n.borrowingDays) / (10000 * 365);
         return n.targetAmount + interest;
     }
-
+ 
     function getProtocolInfo() public view returns (Types.Note memory) {
          return IFilNoteContract(_filNoteContract).getNote(_id);
     }
-
     function withdrawFundingAmount() public nonReentrant whenNotStopped{
         Types.Note memory note = getProtocolInfo();
         if(note.status != uint8(Types.NoteStatus.ACTIVE)) revert Types.InvalidNoteStatus();
