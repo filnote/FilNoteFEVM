@@ -1,13 +1,13 @@
-# FilNote 合约部署指南
+# FilNote Contract Deployment Guide
 
-## 部署 FilNote 合约
+## Deploy FilNote Contract
 
 ### Build
 ```bash
 forge build
 ```
 
-### Calibration 测试网部署
+### Calibration Testnet Deployment
 
 ```bash
 forge create src/FilNote.sol:FilNoteContract --rpc-url https://rpc.ankr.com/filecoin_testnet --private-key <PRIVATE_KEY> --broadcast --verify --verifier sourcify -vvvv
