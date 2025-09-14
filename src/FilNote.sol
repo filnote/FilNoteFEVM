@@ -7,6 +7,10 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 
+interface IProtocolsContract {
+    function stopProtocol() external;
+}
+
 contract FilNoteContract is Ownable, ReentrancyGuard {
     constructor() Ownable(msg.sender) {}
 
@@ -150,13 +154,20 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
         emit NoteStatusChanged(id, uint8(Types.NoteStatus.COMPLETED));
         return id;
     }
+    function defaultNote(uint64 id) external noteExists(id) returns (uint64) {
+        Types.Note storage note = _notes[id];
+        if(note.status != uint8(Types.NoteStatus.ACTIVE)) revert Types.InvalidNoteStatus();
+        if(msg.sender != note.protocolContract) revert Types.NotPermission();
+        note.status = uint8(Types.NoteStatus.DEFAULTED);
+        emit NoteStatusChanged(id, uint8(Types.NoteStatus.DEFAULTED));
+        return id;
+    }
 
     function stopNote(uint64 id) external onlyOwner noteExists(id)  returns (uint64) {
         Types.Note storage note = _notes[id];
         if(note.status != uint8(Types.NoteStatus.ACTIVE)) revert Types.InvalidNoteStatus();
         note.status = uint8(Types.NoteStatus.STOP);
-        ProtocolsContract protocol = ProtocolsContract(payable(note.protocolContract));
-        protocol.stopProtocol();
+        IProtocolsContract(note.protocolContract).stopProtocol();
         emit NoteStatusChanged(id, uint8(Types.NoteStatus.STOP));
         return id;
     }

@@ -7,6 +7,7 @@ import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.s
 interface IFilNoteContract {
     function getNote(uint64 id) external view returns (Types.Note memory);
     function completeNote(uint64 id) external returns (uint64);
+    function defaultNote(uint64 id) external returns (uint64);
 }
 
 contract ProtocolsContract is ReentrancyGuard {
@@ -32,6 +33,7 @@ contract ProtocolsContract is ReentrancyGuard {
     event WithdrawFundingAmount(address indexed creator, uint256 amount);
     event ProtocolCreated(uint64 indexed noteId, address indexed creator, address indexed investor);
     event WithdrawPoolAmount(address indexed account, uint256 amount);
+    event Stopped();
     
     receive() external payable {
         _poolAmount += msg.value;
@@ -41,6 +43,11 @@ contract ProtocolsContract is ReentrancyGuard {
     modifier whenNotStopped() {
         if (_stopped) revert Types.NotPermission();
         _;
+    }
+
+    function _minReserve(Types.Note memory n) internal pure returns (uint256) {
+        uint256 interest = (n.targetAmount * n.interestRateBps * n.borrowingDays) / (10000 * 365);
+        return n.targetAmount + interest;
     }
 
     function getProtocolInfo() public view returns (Types.Note memory) {
@@ -63,10 +70,7 @@ contract ProtocolsContract is ReentrancyGuard {
         Types.Note memory note = getProtocolInfo();
         if (msg.sender != _creator) revert Types.NotPermission();
         if (amount > _poolAmount) revert Types.InvalidAmount();
-        uint256 interest = (note.targetAmount * note.interestRateBps * note.borrowingDays) 
-                        / (10000 * 365);
-        uint256 minReserve = note.targetAmount + interest;
-        
+        uint256 minReserve = _minReserve(note);
         if (block.timestamp < note.expiryTime && _poolAmount <= minReserve) {
             revert Types.InvalidAmount();
         }
@@ -84,12 +88,10 @@ contract ProtocolsContract is ReentrancyGuard {
         if(note.status != uint8(Types.NoteStatus.ACTIVE)) revert Types.InvalidNoteStatus();
         if(msg.sender != _investor) revert Types.NotPermission();
         if(block.timestamp < note.expiryTime) revert Types.NotMatured();
-        uint256 interest = (note.targetAmount * note.interestRateBps * note.borrowingDays) 
-                        / (10000 * 365);
-        uint256 payout = note.targetAmount + interest;
+        uint256 payout = _minReserve(note);
         uint256 balance = _poolAmount;
         uint256 payoutAmount;
-        if(balance > payout){
+        if(balance >= payout){
             payoutAmount = payout;
         }else{
             payoutAmount = balance;
@@ -97,18 +99,22 @@ contract ProtocolsContract is ReentrancyGuard {
         _poolAmount -= payoutAmount;
         (bool ok, ) = _investor.call{value: payoutAmount}("");
         if(!ok) revert Types.TransferFailed();
-        IFilNoteContract(_filNoteContract).completeNote(_id);
+        if(balance >= payout){
+            IFilNoteContract(_filNoteContract).completeNote(_id);
+        }else{
+            IFilNoteContract(_filNoteContract).defaultNote(_id);
+        }
         emit WithdrawPoolAmount(_investor, payoutAmount);
     }
 
-    function stopProtocol() public {
+    function stopProtocol() public nonReentrant  {
         if(msg.sender != _filNoteContract) revert Types.NotPermission();
         _stopped = true;
         uint256 payout = _poolAmount;
         _poolAmount = 0;
         (bool ok, ) = _investor.call{value: payout}("");
         if(!ok) revert Types.TransferFailed();
-        emit WithdrawPoolAmount(_investor, payout);
+        emit Stopped();
     }
 
 }

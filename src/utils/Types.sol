@@ -9,6 +9,7 @@ library Types {
         CLOSED,
         ACTIVE,
         COMPLETED,
+        DEFAULTED,
         STOP
     }
     struct Note {
