@@ -11,23 +11,22 @@ interface IFilNoteContract {
 }
 
 contract ProtocolsContract is ReentrancyGuard {
-    uint64 private _id; 
-    address private _creator;
-    address private _investor;
-    address private _filNoteContract;
+    uint64 immutable _id; 
+    address immutable _creator;
+    address immutable _investor;
+    address immutable _filNoteContract;
+
     uint256 private _fundingAmount;
     uint256 private _poolAmount;
-    uint256 private _platformFee;
     bool private _stopped;
 
     
-    constructor(uint64 noteId, address noteCreator,address noteInvestor,uint256 platformFee) payable {
+    constructor(uint64 noteId, address noteCreator,address noteInvestor) payable {
         _id = noteId;
         _creator = noteCreator;
         _investor = noteInvestor;
         _fundingAmount = msg.value;
         _filNoteContract = msg.sender;
-        _platformFee = platformFee;
         emit ProtocolCreated(noteId, noteCreator, noteInvestor);
     }
 
@@ -35,15 +34,31 @@ contract ProtocolsContract is ReentrancyGuard {
     event WithdrawFundingAmount(address indexed creator, uint256 amount);
     event ProtocolCreated(uint64 indexed noteId, address indexed creator, address indexed investor);
     event WithdrawPoolAmount(address indexed account, uint256 amount);
-    event Stopped();
+    event Stopped(uint256 poolAmount,uint256 fundingAmount);
     
     receive() external payable {
+        if(_stopped) revert Types.InvalidNoteStatus();
         _poolAmount += msg.value;
         emit Received(msg.sender, msg.value);
     }
 
     modifier whenNotStopped() {
         if (_stopped) revert Types.NotPermission();
+        _;
+    }
+
+    modifier onlyCreator() {
+        if(msg.sender != _creator) revert Types.NotPermission();
+        _;
+    }
+
+    modifier onlyInvestor() {
+        if(msg.sender != _investor) revert Types.NotPermission();
+        _;
+    }
+
+    modifier onlyFilNoteContract() {
+        if(msg.sender != _filNoteContract) revert Types.NotPermission();
         _;
     }
 
@@ -56,10 +71,9 @@ contract ProtocolsContract is ReentrancyGuard {
     function getProtocolInfo() public view returns (Types.Note memory) {
          return IFilNoteContract(_filNoteContract).getNote(_id);
     }
-    function withdrawFundingAmount() public nonReentrant whenNotStopped{
+    function withdrawFundingAmount() public nonReentrant whenNotStopped onlyCreator{
         Types.Note memory note = getProtocolInfo();
         if(note.status != uint8(Types.NoteStatus.ACTIVE)) revert Types.InvalidNoteStatus();
-        if(msg.sender != _creator) revert Types.NotPermission();
         uint256 amount = _fundingAmount;
         if(amount == 0) revert Types.InvalidAmount();
         _fundingAmount = 0; 
@@ -68,27 +82,26 @@ contract ProtocolsContract is ReentrancyGuard {
         emit WithdrawFundingAmount(_creator, amount);
     }
 
-    function spWithdrawPoolAmount(uint256 amount) public nonReentrant whenNotStopped{
+    function spWithdrawPoolAmount(uint256 amount) public nonReentrant whenNotStopped onlyCreator{
+        if(amount == 0) revert Types.InvalidAmount();
         Types.Note memory note = getProtocolInfo();
-        if (msg.sender != _creator) revert Types.NotPermission();
         if (amount > _poolAmount) revert Types.InvalidAmount();
         uint256 minReserve = _minReserve(note);
-        if (block.timestamp < note.expiryTime && _poolAmount <= minReserve) {
-            revert Types.InvalidAmount();
+        uint256 pool = _poolAmount;
+        if (block.timestamp < note.expiryTime) {
+            if(pool-amount < minReserve) revert Types.InvalidAmount();
+        }else{
+            if(note.status != uint8(Types.NoteStatus.COMPLETED)) revert Types.InvalidNoteStatus();
         }
-        if (block.timestamp >= note.expiryTime && note.status != uint8(Types.NoteStatus.COMPLETED)) {
-            revert Types.InvalidAmount();
-        }
-        _poolAmount -= amount;
+        _poolAmount =pool - amount;
         (bool ok, ) = _creator.call{value: amount}("");
         if (!ok) revert Types.TransferFailed();
-        emit WithdrawPoolAmount(_creator, amount);
+        emit WithdrawPoolAmount(msg.sender, amount);
     }
 
-    function investorWithdrawPoolAmount() public nonReentrant whenNotStopped{
+    function investorWithdrawPoolAmount() public nonReentrant whenNotStopped onlyInvestor{
         Types.Note memory note = getProtocolInfo();
         if(note.status != uint8(Types.NoteStatus.ACTIVE)) revert Types.InvalidNoteStatus();
-        if(msg.sender != _investor) revert Types.NotPermission();
         if(block.timestamp < note.expiryTime) revert Types.NotMatured();
         uint256 payout = _minReserve(note);
         uint256 balance = _poolAmount;
@@ -101,7 +114,7 @@ contract ProtocolsContract is ReentrancyGuard {
         _poolAmount -= payoutAmount;
         (bool ok, ) = _investor.call{value: payoutAmount}("");
         if(!ok) revert Types.TransferFailed();
-        if(balance >= payout){
+        if(payoutAmount == payout){
             IFilNoteContract(_filNoteContract).completeNote(_id);
         }else{
             IFilNoteContract(_filNoteContract).defaultNote(_id);
@@ -109,14 +122,16 @@ contract ProtocolsContract is ReentrancyGuard {
         emit WithdrawPoolAmount(_investor, payoutAmount);
     }
 
-    function stopProtocol() public nonReentrant  {
-        if(msg.sender != _filNoteContract) revert Types.NotPermission();
+    function stopProtocol() public nonReentrant onlyFilNoteContract {
         _stopped = true;
-        uint256 payout = _poolAmount;
+        uint256 pool = _poolAmount;
+        uint256 funding = _fundingAmount;
+        uint256 payout = pool + funding;
         _poolAmount = 0;
+        _fundingAmount = 0;
         (bool ok, ) = _investor.call{value: payout}("");
         if(!ok) revert Types.TransferFailed();
-        emit Stopped();
+        emit Stopped(pool, funding);
     }
 
 }

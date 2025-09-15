@@ -18,8 +18,11 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
     }
 
     uint64 private _nextId = 1;
+    uint64[] private _allNoteIds;
     uint256 private _platformFee;
+    uint256 public constant MAX_LIMIT = 100;
     address private _platformFeeRecipient;
+
     
     mapping(uint64 => Types.Note) internal _notes;
     mapping(address => uint64[]) internal _notesByCreator;
@@ -61,9 +64,24 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
     function getNote(uint64 id) public view noteExists(id) returns (Types.Note memory) {
         return _notes[id];
     }
+
+    function getNotes(uint256 offset, uint256 limit) public view returns (Types.Note[] memory) {
+        if (limit > MAX_LIMIT) revert Types.LimitExceeded();
+        uint256 len = _allNoteIds.length;
+        if (offset >= len) return new Types.Note[](0);
+        uint256 rlen = len - offset;
+        if (rlen > limit) rlen = limit;
+        Types.Note[] memory page = new Types.Note[](rlen);
+        for (uint256 i; i < rlen; ++i) {
+            uint64 id = _allNoteIds[offset + i];
+            page[i] = _notes[id];
+        }
+        return page;
+    }
+
     
  
-    function getNotes(uint64[] calldata ids) external view returns (Types.Note[] memory result) {
+    function getNoteByIds(uint64[] calldata ids) external view returns (Types.Note[] memory result) {
         result = new Types.Note[](ids.length);
         for (uint256 i; i < ids.length; ++i) {
             result[i] = _notes[ids[i]];
@@ -72,7 +90,7 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
     }
  
     function getNotesByInvestor(address investor,uint256 offset, uint256 limit) public view returns (uint64[] memory) {
-        if(limit > 100) revert Types.LimitExceeded();
+        if(limit > MAX_LIMIT) revert Types.LimitExceeded();
         uint64[] storage all = _notesByInvestor[investor];
         uint256 len = all.length;
         if(offset >= len) return new uint64[](0);
@@ -84,7 +102,7 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
     }
  
     function getNotesByCreator(address creator,uint256 offset, uint256 limit) public view returns (uint64[] memory) {
-        if(limit > 100) revert Types.LimitExceeded();
+        if(limit > MAX_LIMIT) revert Types.LimitExceeded();
         uint64[] storage all = _notesByCreator[creator];
         uint256 len = all.length;
         if(offset >= len) return new uint64[](0);
@@ -106,6 +124,8 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
             id:id,
             creator: msg.sender,
             targetAmount: targetAmount,
+            platformFeeRateBps: _platformFee,
+            platformFeeAmount: 0,
             status: uint8(Types.NoteStatus.INIT),
             investor: address(0),
             interestRateBps: interestRateBps,
@@ -116,6 +136,7 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
             protocolContract: address(0)
         });
         _notes[id] = note;
+        _allNoteIds.push(id);
         _notesByCreator[msg.sender].push(id);
         emit NoteCreated(id, msg.sender, targetAmount, interestRateBps, borrowingDays, expiryTime);
         return id;
@@ -128,18 +149,18 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
         if(msg.value != note.targetAmount) revert Types.InvalidAmount();
         if (block.timestamp >= note.expiryTime) revert Types.InvalidNoteStatus();
         note.status = uint8(Types.NoteStatus.ACTIVE);
-        uint256 payoutPlatform = (msg.value * _platformFee) / 10000;
+        uint256 payoutPlatform = (msg.value * note.platformFeeRateBps) / 10000;
         uint256 payoutCreator = msg.value - payoutPlatform;
         (bool ok, ) = _platformFeeRecipient.call{value: payoutPlatform}("");
         if(!ok) revert Types.TransferFailed();
         ProtocolsContract protocolContract = new ProtocolsContract{value: payoutCreator}(
             note.id,
             note.creator,
-            msg.sender,
-            _platformFee
+            msg.sender
         );
         note.investor = msg.sender;
         note.protocolContract = address(protocolContract);
+        note.platformFeeAmount = payoutPlatform;
         _notesByInvestor[msg.sender].push(id);
         emit Investment(id, msg.sender, msg.value, address(protocolContract));
         emit WithdrawPlatformFee(payoutPlatform, _platformFeeRecipient);
@@ -185,14 +206,14 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
     function stopNote(uint64 id) external onlyOwner noteExists(id)  returns (uint64) {
         Types.Note storage note = _notes[id];
         if(note.status != uint8(Types.NoteStatus.ACTIVE)) revert Types.InvalidNoteStatus();
-        note.status = uint8(Types.NoteStatus.STOP);
         IProtocolsContract(note.protocolContract).stopProtocol();
+        note.status = uint8(Types.NoteStatus.STOP);
         emit NoteStatusChanged(id, uint8(Types.NoteStatus.STOP));
         return id;
     }
 
     function setPlatformFee(uint256 platformFee) external onlyOwner {
-        if(platformFee < 0 || platformFee > 10_000) revert Types.InvalidPlatformFee();
+        if(platformFee > 10_000) revert Types.InvalidPlatformFee();
         _platformFee = platformFee;
         emit PlatformFeeChanged(platformFee, _platformFeeRecipient);
     }
@@ -209,6 +230,10 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
 
     function getPlatformFeeRecipient() external view returns (address) {
         return _platformFeeRecipient;
+    }
+
+    function getTotalNotes() external view returns (uint256) {
+        return _allNoteIds.length;
     }
 
 }

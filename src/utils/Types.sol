@@ -14,7 +14,9 @@ library Types {
     }
     struct Note {
         uint64 id;
-        uint256 targetAmount;    
+        uint256 targetAmount;
+        uint256 platformFeeRateBps;
+        uint256 platformFeeAmount;    
         address creator;
         address investor;
         address protocolContract;
