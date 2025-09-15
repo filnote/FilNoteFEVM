@@ -11,10 +11,10 @@ interface IFilNoteContract {
 }
 
 contract ProtocolsContract is ReentrancyGuard {
-    uint64 immutable _id; 
-    address immutable _creator;
-    address immutable _investor;
-    address immutable _filNoteContract;
+    uint64 immutable ID; 
+    address immutable CREATOR;
+    address immutable INVESTOR;
+    address immutable FIL_NOTE_CONTRACT;
 
     uint256 private _fundingAmount;
     uint256 private _poolAmount;
@@ -22,11 +22,11 @@ contract ProtocolsContract is ReentrancyGuard {
 
     
     constructor(uint64 noteId, address noteCreator,address noteInvestor) payable {
-        _id = noteId;
-        _creator = noteCreator;
-        _investor = noteInvestor;
+        ID = noteId;
+        CREATOR = noteCreator;
+        INVESTOR = noteInvestor;
         _fundingAmount = msg.value;
-        _filNoteContract = msg.sender;
+        FIL_NOTE_CONTRACT = msg.sender;
         emit ProtocolCreated(noteId, noteCreator, noteInvestor);
     }
 
@@ -48,17 +48,17 @@ contract ProtocolsContract is ReentrancyGuard {
     }
 
     modifier onlyCreator() {
-        if(msg.sender != _creator) revert Types.NotPermission();
+        if(msg.sender != CREATOR) revert Types.NotPermission();
         _;
     }
 
     modifier onlyInvestor() {
-        if(msg.sender != _investor) revert Types.NotPermission();
+        if(msg.sender != INVESTOR) revert Types.NotPermission();
         _;
     }
 
     modifier onlyFilNoteContract() {
-        if(msg.sender != _filNoteContract) revert Types.NotPermission();
+        if(msg.sender != FIL_NOTE_CONTRACT) revert Types.NotPermission();
         _;
     }
 
@@ -69,7 +69,7 @@ contract ProtocolsContract is ReentrancyGuard {
     }
  
     function getProtocolInfo() public view returns (Types.Note memory) {
-         return IFilNoteContract(_filNoteContract).getNote(_id);
+         return IFilNoteContract(FIL_NOTE_CONTRACT).getNote(ID);
     }
     function withdrawFundingAmount() public nonReentrant whenNotStopped onlyCreator{
         Types.Note memory note = getProtocolInfo();
@@ -77,9 +77,9 @@ contract ProtocolsContract is ReentrancyGuard {
         uint256 amount = _fundingAmount;
         if(amount == 0) revert Types.InvalidAmount();
         _fundingAmount = 0; 
-        (bool ok, ) = _creator.call{value: amount}("");
+        (bool ok, ) = CREATOR.call{value: amount}("");
         if(!ok) revert Types.TransferFailed();
-        emit WithdrawFundingAmount(_creator, amount);
+        emit WithdrawFundingAmount(CREATOR, amount);
     }
 
     function spWithdrawPoolAmount(uint256 amount) public nonReentrant whenNotStopped onlyCreator{
@@ -94,7 +94,7 @@ contract ProtocolsContract is ReentrancyGuard {
             if(note.status != uint8(Types.NoteStatus.COMPLETED)) revert Types.InvalidNoteStatus();
         }
         _poolAmount =pool - amount;
-        (bool ok, ) = _creator.call{value: amount}("");
+        (bool ok, ) = CREATOR.call{value: amount}("");
         if (!ok) revert Types.TransferFailed();
         emit WithdrawPoolAmount(msg.sender, amount);
     }
@@ -112,14 +112,14 @@ contract ProtocolsContract is ReentrancyGuard {
             payoutAmount = balance;
         }
         _poolAmount -= payoutAmount;
-        (bool ok, ) = _investor.call{value: payoutAmount}("");
+        (bool ok, ) = INVESTOR.call{value: payoutAmount}("");
         if(!ok) revert Types.TransferFailed();
         if(payoutAmount == payout){
-            IFilNoteContract(_filNoteContract).completeNote(_id);
+            IFilNoteContract(FIL_NOTE_CONTRACT).completeNote(ID);
         }else{
-            IFilNoteContract(_filNoteContract).defaultNote(_id);
+            IFilNoteContract(FIL_NOTE_CONTRACT).defaultNote(ID);
         }
-        emit WithdrawPoolAmount(_investor, payoutAmount);
+        emit WithdrawPoolAmount(INVESTOR, payoutAmount);
     }
 
     function stopProtocol() public nonReentrant onlyFilNoteContract {
@@ -129,7 +129,7 @@ contract ProtocolsContract is ReentrancyGuard {
         uint256 payout = pool + funding;
         _poolAmount = 0;
         _fundingAmount = 0;
-        (bool ok, ) = _investor.call{value: payout}("");
+        (bool ok, ) = INVESTOR.call{value: payout}("");
         if(!ok) revert Types.TransferFailed();
         emit Stopped(pool, funding);
     }
