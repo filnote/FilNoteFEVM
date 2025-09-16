@@ -3,18 +3,20 @@ pragma solidity ^0.8.22;
 
 import { Types } from "./utils/Types.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-
-interface IFilNoteContract {
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+interface IFilNoteContract  {
     function getNote(uint64 id) external view returns (Types.Note memory);
     function completeNote(uint64 id) external returns (uint64);
     function defaultNote(uint64 id) external returns (uint64);
+    function owner() external view returns (address);
 }
 
 contract ProtocolsContract is ReentrancyGuard {
-    uint64 immutable _ID; 
-    address immutable _CREATOR;
-    address immutable _INVESTOR;
-    address immutable _FIL_NOTE_CONTRACT;
+    uint64 private immutable _ID; 
+    address private immutable _CREATOR;
+    address private immutable _INVESTOR;
+    address private immutable _FIL_NOTE_CONTRACT;
+
 
     uint256 private _fundingAmount;
     uint256 private _poolAmount;
@@ -35,9 +37,8 @@ contract ProtocolsContract is ReentrancyGuard {
     event ProtocolCreated(uint64 indexed noteId, address indexed creator, address indexed investor);
     event WithdrawPoolAmount(address indexed account, uint256 amount);
     event Stopped(uint256 poolAmount,uint256 fundingAmount);
-    
+
     receive() external payable {
-        if(_stopped) revert Types.InvalidNoteStatus();
         _poolAmount += msg.value;
         emit Received(msg.sender, msg.value);
     }
@@ -64,7 +65,8 @@ contract ProtocolsContract is ReentrancyGuard {
 
  
     function _minReserve(Types.Note memory n) internal pure returns (uint256) {
-        uint256 interest = (n.targetAmount * n.interestRateBps * n.borrowingDays) / (10000 * 365);
+        uint256 num = uint256(n.interestRateBps) * uint256(n.borrowingDays);
+        uint256 interest =Math.mulDiv(n.targetAmount, num,(10000 * 365));
         return n.targetAmount + interest;
     }
  
@@ -132,6 +134,19 @@ contract ProtocolsContract is ReentrancyGuard {
         (bool ok, ) = _INVESTOR.call{value: payout}("");
         if(!ok) revert Types.TransferFailed();
         emit Stopped(pool, funding);
+    }
+
+    function withdrawalRemainingFunds(address account) public nonReentrant {
+        if(!_stopped) revert Types.InvalidNoteStatus();
+        if(_poolAmount == 0) revert Types.InvalidAmount();
+        if(account == address(0)) revert Types.InvalidAddress();
+        address owner = IFilNoteContract(_FIL_NOTE_CONTRACT).owner();
+        if(msg.sender != owner) revert Types.NotPermission();
+        uint256 payOut =_poolAmount;
+        _poolAmount = 0;
+        (bool ok,) = account.call{value: payOut}("");
+        if(!ok) revert Types.TransferFailed();
+        emit WithdrawPoolAmount(account, payOut);
     }
 
 }
