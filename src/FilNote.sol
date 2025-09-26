@@ -39,8 +39,7 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
         address indexed creator,
         uint256 targetAmount,
         uint16 interestRateBps,
-        uint16 borrowingDays,
-        uint64 expiryTime
+        uint16 borrowingDays
     );
     event NoteStatusChanged(
         uint64 indexed id,
@@ -119,7 +118,6 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
         if(borrowingDays <= 0 || borrowingDays > 1000) revert Types.InvalidBorrowingDays();
         uint64 id = _nextId;
         unchecked { _nextId = id + 1; }
-        uint64 expiryTime = uint64(block.timestamp) + (borrowingDays * 1 days);
         Types.Note memory note = Types.Note({
             id:id,
             creator: msg.sender,
@@ -131,14 +129,14 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
             interestRateBps: interestRateBps,
             contractHash: bytes32(0),
             borrowingDays: borrowingDays,
-            expiryTime: expiryTime,
+            expiryTime: 0,
             createdAt: uint64(block.timestamp),
             protocolContract: address(0)
         });
         _notes[id] = note;
         _allNoteIds.push(id);
         _notesByCreator[msg.sender].push(id);
-        emit NoteCreated(id, msg.sender, targetAmount, interestRateBps, borrowingDays, expiryTime);
+        emit NoteCreated(id, msg.sender, targetAmount, interestRateBps, borrowingDays);
         return id;
      }
 
@@ -158,6 +156,7 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
             note.creator,
             msg.sender
         );
+        note.expiryTime =  uint64(block.timestamp) + (note.borrowingDays * 1 days);
         note.investor = msg.sender;
         note.protocolContract = address(protocolContract);
         note.platformFeeAmount = payoutPlatform;
