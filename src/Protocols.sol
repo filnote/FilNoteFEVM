@@ -149,4 +149,11 @@ contract ProtocolsContract is ReentrancyGuard {
         emit WithdrawPoolAmount(account, payOut);
     }
 
+    function getContractInfo() public view returns (Types.ProtocolInfo memory) {
+        return Types.ProtocolInfo({
+            fundingAmount: _fundingAmount,
+            poolAmount: _poolAmount
+        });
+    }
+
 }

@@ -28,6 +28,11 @@ library Types {
         uint8 status;
     }
 
+    struct ProtocolInfo {
+        uint256 fundingAmount;
+        uint256 poolAmount;
+    }
+
     error InvalidTargetAmount();
     error InterestRateOutOfRange();
     error InvalidContractHash();
