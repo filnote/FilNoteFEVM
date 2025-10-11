@@ -90,11 +90,9 @@ contract ProtocolsContract is ReentrancyGuard {
         if (amount > _poolAmount) revert Types.InvalidAmount();
         uint256 minReserve = _minReserve(note);
         uint256 pool = _poolAmount;
-        if (block.timestamp < note.expiryTime) {
-            if(pool-amount < minReserve) revert Types.InvalidAmount();
-        }else{
-            if(note.status != uint8(Types.NoteStatus.COMPLETED)) revert Types.InvalidNoteStatus();
-        }
+        if (block.timestamp < note.expiryTime && (pool-amount < minReserve)) {
+            revert Types.InvalidAmount();
+        } 
         _poolAmount =pool - amount;
         (bool ok, ) = _CREATOR.call{value: amount}("");
         if (!ok) revert Types.TransferFailed();
