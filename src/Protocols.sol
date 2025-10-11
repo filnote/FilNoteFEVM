@@ -29,6 +29,7 @@ contract ProtocolsContract is ReentrancyGuard {
         _INVESTOR = noteInvestor;
         _fundingAmount = msg.value;
         _FIL_NOTE_CONTRACT = msg.sender;
+        _poolAmount = 0;
         emit ProtocolCreated(noteId, noteCreator, noteInvestor);
     }
 
