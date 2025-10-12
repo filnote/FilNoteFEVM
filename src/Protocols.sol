@@ -91,9 +91,12 @@ contract ProtocolsContract is ReentrancyGuard {
         if (amount > _poolAmount) revert Types.InvalidAmount();
         uint256 minReserve = _minReserve(note);
         uint256 pool = _poolAmount;
-        if (block.timestamp < note.expiryTime && (pool-amount < minReserve)) {
+        if (note.status != uint8(Types.NoteStatus.ACTIVE)) {
+            revert Types.InvalidNoteStatus();
+        }
+        if (pool-amount < minReserve) {
             revert Types.InvalidAmount();
-        } 
+        }
         _poolAmount =pool - amount;
         (bool ok, ) = _CREATOR.call{value: amount}("");
         if (!ok) revert Types.TransferFailed();
@@ -127,7 +130,8 @@ contract ProtocolsContract is ReentrancyGuard {
         _stopped = true;
         uint256 pool = _poolAmount;
         uint256 funding = _fundingAmount;
-        uint256 payout = pool + funding;
+        uint256 payout = address(this).balance;
+        if (payout == 0) revert Types.InvalidAmount();
         _poolAmount = 0;
         _fundingAmount = 0;
         (bool ok, ) = _INVESTOR.call{value: payout}("");
@@ -135,18 +139,6 @@ contract ProtocolsContract is ReentrancyGuard {
         emit Stopped(pool, funding);
     }
 
-    function withdrawalRemainingFunds(address account) public nonReentrant {
-        if(!_stopped) revert Types.InvalidNoteStatus();
-        if(_poolAmount == 0) revert Types.InvalidAmount();
-        if(account == address(0)) revert Types.InvalidAddress();
-        address owner = IFilNoteContract(_FIL_NOTE_CONTRACT).owner();
-        if(msg.sender != owner) revert Types.NotPermission();
-        uint256 payOut =_poolAmount;
-        _poolAmount = 0;
-        (bool ok,) = account.call{value: payOut}("");
-        if(!ok) revert Types.TransferFailed();
-        emit WithdrawPoolAmount(account, payOut);
-    }
 
     function getContractInfo() public view returns (Types.ProtocolInfo memory) {
         return Types.ProtocolInfo({
