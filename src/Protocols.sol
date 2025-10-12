@@ -37,7 +37,7 @@ contract ProtocolsContract is ReentrancyGuard {
     event WithdrawFundingAmount(address indexed creator, uint256 amount);
     event ProtocolCreated(uint64 indexed noteId, address indexed creator, address indexed investor);
     event WithdrawPoolAmount(address indexed account, uint256 amount);
-    event Stopped(uint256 poolAmount,uint256 fundingAmount);
+    event Stopped(uint256 payout);
 
     receive() external payable {
         _poolAmount += msg.value;
@@ -88,7 +88,6 @@ contract ProtocolsContract is ReentrancyGuard {
     function spWithdrawPoolAmount(uint256 amount) public nonReentrant whenNotStopped onlyCreator{
         if(amount == 0) revert Types.InvalidAmount();
         Types.Note memory note = getProtocolInfo();
-        if (amount > _poolAmount) revert Types.InvalidAmount();
         uint256 minReserve = _minReserve(note);
         uint256 pool = _poolAmount;
         if (note.status != uint8(Types.NoteStatus.ACTIVE)) {
@@ -128,15 +127,13 @@ contract ProtocolsContract is ReentrancyGuard {
 
     function stopProtocol() public nonReentrant onlyFilNoteContract {
         _stopped = true;
-        uint256 pool = _poolAmount;
-        uint256 funding = _fundingAmount;
         uint256 payout = address(this).balance;
         if (payout == 0) revert Types.InvalidAmount();
         _poolAmount = 0;
         _fundingAmount = 0;
         (bool ok, ) = _INVESTOR.call{value: payout}("");
         if(!ok) revert Types.TransferFailed();
-        emit Stopped(pool, funding);
+        emit Stopped(payout);
     }
 
 
