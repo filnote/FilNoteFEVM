@@ -78,8 +78,6 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
         return page;
     }
 
-    
- 
     function getNoteByIds(uint64[] calldata ids) external view returns (Types.Note[] memory result) {
         result = new Types.Note[](ids.length);
         for (uint256 i; i < ids.length; ++i) {
@@ -145,7 +143,6 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
         if(note.status != uint8(Types.NoteStatus.PENDING)) revert Types.InvalidNoteStatus();
         if(msg.sender == note.creator) revert Types.InvalidInvestor();
         if(msg.value != note.targetAmount) revert Types.InvalidAmount();
-        if (block.timestamp >= note.expiryTime) revert Types.InvalidNoteStatus();
         note.status = uint8(Types.NoteStatus.ACTIVE);
         uint256 payoutPlatform = (msg.value * note.platformFeeRateBps) / 10000;
         uint256 payoutCreator = msg.value - payoutPlatform;
