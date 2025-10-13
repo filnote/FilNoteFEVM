@@ -77,12 +77,12 @@ contract ProtocolsContract is ReentrancyGuard {
     function withdrawFundingAmount() public nonReentrant whenNotStopped onlyCreator{
         Types.Note memory note = getProtocolInfo();
         if(note.status != uint8(Types.NoteStatus.ACTIVE)) revert Types.InvalidNoteStatus();
-        uint256 amount = _fundingAmount;
-        if(amount == 0) revert Types.InvalidAmount();
+        if(_fundingAmount == 0) revert Types.InvalidAmount();
+        uint256 payout = _fundingAmount;
         _fundingAmount = 0; 
-        (bool ok, ) = _CREATOR.call{value: amount}("");
+        (bool ok, ) = _CREATOR.call{value: payout}("");
         if(!ok) revert Types.TransferFailed();
-        emit WithdrawFundingAmount(_CREATOR, amount);
+        emit WithdrawFundingAmount(_CREATOR, payout);
     }
 
     function spWithdrawPoolAmount(uint256 amount) public nonReentrant whenNotStopped onlyCreator{

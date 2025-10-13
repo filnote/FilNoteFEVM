@@ -4,9 +4,9 @@ pragma solidity ^0.8.22;
 import { ProtocolsContract } from "./Protocols.sol";
 import { Types } from "./utils/Types.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-
-
+ 
 interface IProtocolsContract {
     function stopProtocol() external;
 }
@@ -144,7 +144,7 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
         if(msg.sender == note.creator) revert Types.InvalidInvestor();
         if(msg.value != note.targetAmount) revert Types.InvalidAmount();
         note.status = uint8(Types.NoteStatus.ACTIVE);
-        uint256 payoutPlatform = (msg.value * note.platformFeeRateBps) / 10000;
+        uint256 payoutPlatform = Math.mulDiv(msg.value, note.platformFeeRateBps, 10000);
         uint256 payoutCreator = msg.value - payoutPlatform;
         (bool ok, ) = _platformFeeRecipient.call{value: payoutPlatform}("");
         if(!ok) revert Types.TransferFailed();
