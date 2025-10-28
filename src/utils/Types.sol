@@ -44,6 +44,7 @@ library Types {
         address creator;                ///< Address of the note creator [中文: 票据创建者地址]
         address investor;               ///< Address of the investor [中文: 投资者地址]
         address protocolContract;       ///< Address of the protocol contract [中文: 协议合约地址]
+        address auditor;                ///< Address of the auditor [中文: 审计员地址]
         bytes32 contractHash;            ///< Hash of the associated contract [中文: 关联合约的哈希]
         uint64 expiryTime;              ///< Timestamp when the note expires [中文: 票据到期的时间戳]
         uint64 createdAt;               ///< Timestamp when the note was created [中文: 票据创建的时间戳]

@@ -90,6 +90,15 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
         if (_notes[id].id == 0) revert Types.NoNote();
         _;
     }
+    /**
+     * @notice Modifier to check if the caller is an auditor [中文: 检查调用者是否是审计员]
+     * @dev Reverts if the caller is not an auditor [中文: 如果调用者不是审计员则回滚]
+     * @custom:reverts Types.NotPermission() if caller is not an auditor [中文: 如果调用者不是审计员则回滚Types.NotPermission()]
+     */
+    modifier onlyAuditor() {
+        if(!isAuditor(msg.sender)) revert Types.NotPermission();
+        _;
+    }
 
     /**
      * @notice Check if an auditor is in the list of auditors [中文: 检查一个审计员是否在审计员列表中]
@@ -286,7 +295,8 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
             borrowingDays: borrowingDays,
             expiryTime: 0,
             createdAt: uint64(block.timestamp),
-            protocolContract: address(0)
+            protocolContract: address(0),
+            auditor: address(0)
         });
         _notes[id] = note;
         _allNoteIds.push(id);
@@ -361,19 +371,20 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
      * @param id The ID of the note to set to pending [中文: 要设置为待投资状态的票据ID]
      * @param contractHash The hash of the associated contract [中文: 关联合约的哈希]
      * @return uint64 The ID of the pending note [中文: 待投资票据的ID]
-     * @custom:permission Only contract owner can call [中文: 只有合约所有者可以调用]
-     * @custom:modifier Uses onlyOwner to restrict access [中文: 使用onlyOwner限制访问]
+     * @custom:permission Only auditor can call [中文: 只有审计员可以调用]
+     * @custom:modifier Uses onlyAuditor to restrict access [中文: 使用onlyAuditor限制访问]
      * @custom:modifier Uses noteExists to ensure note exists [中文: 使用noteExists确保票据存在]
      * @custom:reverts Types.InvalidNoteStatus() if note is not in INIT status [中文: 如果票据不在INIT状态则回滚Types.InvalidNoteStatus()]
      * @custom:reverts Types.InvalidContractHash() if contract hash is zero [中文: 如果合约哈希为零则回滚Types.InvalidContractHash()]
      * @custom:emits NoteStatusChanged event with PENDING status [中文: 发出包含PENDING状态的NoteStatusChanged事件]
      */
-    function pendingNote(uint64 id,bytes32 contractHash) external onlyOwner noteExists(id) returns (uint64) {
+    function pendingNote(uint64 id,bytes32 contractHash) external onlyAuditor noteExists(id) returns (uint64) {
         Types.Note storage note = _notes[id];
         if(note.status != uint8(Types.NoteStatus.INIT)) revert Types.InvalidNoteStatus();
         if(contractHash == bytes32(0)) revert Types.InvalidContractHash();
         note.status = uint8(Types.NoteStatus.PENDING);
         note.contractHash = contractHash;
+        note.auditor = msg.sender;
         emit NoteStatusChanged(id, uint8(Types.NoteStatus.PENDING));
         return id;
     }
