@@ -37,30 +37,32 @@ library Types {
      * @custom:security All fields are immutable after creation except status [中文: 除状态外，所有字段在创建后都是不可变的]
      */
     struct Note {
-        uint64 id;                      ///< Unique identifier for the note [中文: 票据的唯一标识符]
-        uint256 targetAmount;           ///< Target funding amount in wei [中文: 目标融资金额，以wei为单位]
-        uint256 platformFeeRateBps;     ///< Platform fee rate in basis points [中文: 平台费用率，以基点为单位]
-        uint256 platformFeeAmount;      ///< Actual platform fee amount collected [中文: 实际收取的平台费用金额]
-        address creator;                ///< Address of the note creator [中文: 票据创建者地址]
-        address investor;               ///< Address of the investor [中文: 投资者地址]
-        address protocolContract;       ///< Address of the protocol contract [中文: 协议合约地址]
-        address auditor;                ///< Address of the auditor [中文: 审计员地址]
-        bytes32 contractHash;            ///< Hash of the associated contract [中文: 关联合约的哈希]
-        uint64 expiryTime;              ///< Timestamp when the note expires [中文: 票据到期的时间戳]
-        uint64 createdAt;               ///< Timestamp when the note was created [中文: 票据创建的时间戳]
-        uint16 borrowingDays;           ///< Number of days for borrowing period [中文: 借款期间的天数]
-        uint16 interestRateBps;          ///< Interest rate in basis points [中文: 利率，以基点为单位]
-        uint8 status;                   ///< Current status of the note [中文: 票据的当前状态]
-    }
+        uint64 id; ///< Unique identifier for the note [中文: 票据的唯一标识符]
+        uint256 targetAmount; ///< Target funding amount in wei [中文: 目标融资金额，以wei为单位]
+        uint256 platformFeeRateBps; ///< Platform fee rate in basis points [中文: 平台费用率，以基点为单位]
+        uint256 platformFeeAmount; ///< Actual platform fee amount collected [中文: 实际收取的平台费用金额]
+        address creator; ///< Address of the note creator [中文: 票据创建者地址]
+        address investor; ///< Address of the investor [中文: 投资者地址]
+        address protocolContract; ///< Address of the protocol contract [中文: 协议合约地址]
+        address auditor; ///< Address of the auditor [中文: 审计员地址]
+        string contractHash; ///< IPFS CID of the associated contract [中文: 关联合约的IPFS CID]
+        string privacyCertificateHash; ///< IPFS CID of the privacy certificate [中文: 隐私凭证的IPFS CID]
+        string privacyCredentialsAbridgedHash; ///< IPFS CID of the privacy credentials abridged [中文: 隐私凭证摘要的IPFS CID]
+        uint256 expiryTime; ///< Timestamp when the note expires [中文: 票据到期的时间戳]
+        uint64 createdAt; ///< Timestamp when the note was created [中文: 票据创建的时间戳]
+        uint16 borrowingDays; ///< Number of days for borrowing period [中文: 借款期间的天数]
+        uint16 interestRateBps; ///< Interest rate in basis points [中文: 利率，以基点为单位]
+        uint8 status;
+    } ///< Current status of the note [中文: 票据的当前状态]
 
     /**
      * @notice Structure for protocol contract information [中文: 协议合约信息的结构体]
      * @dev Contains funding and pool information for protocol contracts [中文: 包含协议合约的资金和池信息]
      */
     struct ProtocolInfo {
-        uint256 fundingAmount;          ///< Amount of funding provided [中文: 提供的资金金额]
-        uint256 poolAmount;             ///< Amount in the protocol pool [中文: 协议池中的金额]
-    }
+        uint256 fundingAmount; ///< Amount of funding provided [中文: 提供的资金金额]
+        uint256 poolAmount;
+    } ///< Amount in the protocol pool [中文: 协议池中的金额]
 
     // ============ Error Definitions ============
     // [中文: 错误定义]
@@ -77,7 +79,7 @@ library Types {
     error InterestRateOutOfRange();
     /**
      * @notice Error thrown when contract hash is invalid [中文: 当合约哈希无效时抛出的错误]
-     * @dev Triggered when contractHash is zero bytes32 [中文: 当contractHash为零bytes32时触发]
+     * @dev Triggered when contractHash is empty string [中文: 当contractHash为空字符串时触发]
      */
     error InvalidContractHash();
     /**

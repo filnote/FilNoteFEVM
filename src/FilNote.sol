@@ -5,8 +5,10 @@ import { ProtocolsContract } from "./Protocols.sol";
 import { Types } from "./utils/Types.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
- 
+import {
+    ReentrancyGuard
+} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+
 /**
  * @title IProtocolsContract Interface
  * @notice Interface for protocol contract interaction [中文: 协议合约交互接口]
@@ -45,7 +47,6 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
     address private _platformFeeRecipient;
     address[] private _auditors;
 
-    
     mapping(uint64 => Types.Note) internal _notes;
     mapping(address => uint64[]) internal _notesByCreator;
     mapping(address => uint64[]) internal _notesByInvestor;
@@ -63,22 +64,13 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
         uint16 interestRateBps,
         uint16 borrowingDays
     );
-    event NoteStatusChanged(
-        uint64 indexed id,
-        uint8 status
-    );
-    event PlatformFeeChanged(
-        uint256 platformFee,
-        address platformFeeRecipient
-    );
+    event NoteStatusChanged(uint64 indexed id, uint8 status);
+    event PlatformFeeChanged(uint256 platformFee, address platformFeeRecipient);
     event WithdrawPlatformFee(
         uint256 platformFee,
         address platformFeeRecipient
     );
-    event AuditorUpdated(
-        address auditor,
-        bool isActive
-    );
+    event AuditorUpdated(address auditor, bool isActive);
 
     /**
      * @notice Modifier to check if a note exists [中文: 检查票据是否存在的修饰符]
@@ -96,7 +88,7 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
      * @custom:reverts Types.NotPermission() if caller is not an auditor [中文: 如果调用者不是审计员则回滚Types.NotPermission()]
      */
     modifier onlyAuditor() {
-        if(!isAuditor(msg.sender)) revert Types.NotPermission();
+        if (!isAuditor(msg.sender)) revert Types.NotPermission();
         _;
     }
 
@@ -124,8 +116,8 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
      * @custom:emits AuditorUpdated event with auditor address and true status [中文: 发出AuditorUpdated事件，包含审计员地址和true状态]
      */
     function addAuditor(address auditor) external onlyOwner {
-        if(auditor == address(0)) revert Types.InvalidAddress();
-        if(isAuditor(auditor)) revert Types.AuditorAlreadyExists();
+        if (auditor == address(0)) revert Types.InvalidAddress();
+        if (isAuditor(auditor)) revert Types.AuditorAlreadyExists();
         _auditors.push(auditor);
         emit AuditorUpdated(auditor, true);
     }
@@ -139,8 +131,8 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
      * @custom:emits AuditorUpdated event with auditor address and false status [中文: 发出AuditorUpdated事件，包含审计员地址和false状态]
      */
     function removeAuditor(address auditor) external onlyOwner {
-        if(auditor == address(0)) revert Types.InvalidAddress();
-        if(!isAuditor(auditor)) revert Types.AuditorNotExists();
+        if (auditor == address(0)) revert Types.InvalidAddress();
+        if (!isAuditor(auditor)) revert Types.AuditorNotExists();
         for (uint256 i = 0; i < _auditors.length; i++) {
             if (_auditors[i] == auditor) {
                 _auditors[i] = _auditors[_auditors.length - 1];
@@ -161,7 +153,7 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
     function getAuditors() public view returns (address[] memory) {
         return _auditors;
     }
-     
+
     /**
      * @notice Get a note by its ID [中文: 根据ID获取一个Note]
      * @dev Retrieves a specific note from storage by its unique identifier [中文: 根据唯一标识符从存储中检索特定票据]
@@ -171,7 +163,9 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
      * @custom:modifier Uses noteExists modifier to ensure note exists [中文: 使用noteExists修饰符确保票据存在]
      * @custom:reverts Types.NoNote() if note does not exist [中文: 如果票据不存在则回滚Types.NoNote()]
      */
-    function getNote(uint64 id) public view noteExists(id) returns (Types.Note memory) {
+    function getNote(
+        uint64 id
+    ) public view noteExists(id) returns (Types.Note memory) {
         return _notes[id];
     }
 
@@ -185,7 +179,10 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
      * @custom:reverts Types.LimitExceeded() if limit exceeds MAX_LIMIT [中文: 如果限制超过MAX_LIMIT则回滚Types.LimitExceeded()]
      * @custom:gas-optimization Returns empty array if offset exceeds total length [中文: 如果偏移量超过总长度则返回空数组]
      */
-    function getNotes(uint256 offset, uint256 limit) public view returns (Types.Note[] memory) {
+    function getNotes(
+        uint256 offset,
+        uint256 limit
+    ) public view returns (Types.Note[] memory) {
         if (limit > MAX_LIMIT) revert Types.LimitExceeded();
         uint256 len = _allNoteIds.length;
         if (offset >= len) return new Types.Note[](0);
@@ -208,14 +205,16 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
      * @custom:gas-optimization Uses calldata for input parameter to save gas [中文: 对输入参数使用calldata以节省gas]
      * @custom:note Returns empty note structures for non-existent IDs [中文: 对于不存在的ID返回空票据结构]
      */
-    function getNoteByIds(uint64[] calldata ids) external view returns (Types.Note[] memory result) {
+    function getNoteByIds(
+        uint64[] calldata ids
+    ) external view returns (Types.Note[] memory result) {
         result = new Types.Note[](ids.length);
         for (uint256 i; i < ids.length; ++i) {
             result[i] = _notes[ids[i]];
         }
         return result;
     }
- 
+
     /**
      * @notice Get a list of notes by their investor with pagination [中文: 分页获取投资者的Note列表]
      * @dev Retrieves note IDs for a specific investor with pagination support [中文: 检索特定投资者的票据ID，支持分页]
@@ -227,18 +226,22 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
      * @custom:reverts Types.LimitExceeded() if limit exceeds MAX_LIMIT [中文: 如果限制超过MAX_LIMIT则回滚Types.LimitExceeded()]
      * @custom:gas-optimization Returns empty array if offset exceeds investor's note count [中文: 如果偏移量超过投资者的票据数量则返回空数组]
      */
-    function getNotesByInvestor(address investor,uint256 offset, uint256 limit) public view returns (uint64[] memory) {
-        if(limit > MAX_LIMIT) revert Types.LimitExceeded();
+    function getNotesByInvestor(
+        address investor,
+        uint256 offset,
+        uint256 limit
+    ) public view returns (uint64[] memory) {
+        if (limit > MAX_LIMIT) revert Types.LimitExceeded();
         uint64[] storage all = _notesByInvestor[investor];
         uint256 len = all.length;
-        if(offset >= len) return new uint64[](0);
+        if (offset >= len) return new uint64[](0);
         uint256 rlen = len - offset;
         if (rlen > limit) rlen = limit;
         uint64[] memory page = new uint64[](rlen);
         for (uint256 i; i < rlen; ++i) page[i] = all[offset + i];
         return page;
     }
- 
+
     /**
      * @notice Get a list of notes by their creator with pagination [中文: 分页获取创建者的Note列表]
      * @dev Retrieves note IDs for a specific creator with pagination support [中文: 检索特定创建者的票据ID，支持分页]
@@ -250,11 +253,15 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
      * @custom:reverts Types.LimitExceeded() if limit exceeds MAX_LIMIT [中文: 如果限制超过MAX_LIMIT则回滚Types.LimitExceeded()]
      * @custom:gas-optimization Returns empty array if offset exceeds creator's note count [中文: 如果偏移量超过创建者的票据数量则返回空数组]
      */
-    function getNotesByCreator(address creator,uint256 offset, uint256 limit) public view returns (uint64[] memory) {
-        if(limit > MAX_LIMIT) revert Types.LimitExceeded();
+    function getNotesByCreator(
+        address creator,
+        uint256 offset,
+        uint256 limit
+    ) public view returns (uint64[] memory) {
+        if (limit > MAX_LIMIT) revert Types.LimitExceeded();
         uint64[] storage all = _notesByCreator[creator];
         uint256 len = all.length;
-        if(offset >= len) return new uint64[](0);
+        if (offset >= len) return new uint64[](0);
         uint256 rlen = len - offset;
         if (rlen > limit) rlen = limit;
         uint64[] memory page = new uint64[](rlen);
@@ -268,6 +275,7 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
      * @param targetAmount The target funding amount for the note [中文: 票据的目标融资金额]
      * @param interestRateBps The interest rate in basis points (0-10000) [中文: 利率，以基点为单位(0-10000)]
      * @param borrowingDays The number of days for the borrowing period [中文: 借款期间的天数]
+     * @param privacyCertificateHash The IPFS CID of the privacy certificate (optional, can be empty string) [中文: 隐私凭证的IPFS CID（可选，可为空字符串）]
      * @return uint64 The unique ID of the created note [中文: 创建的票据的唯一ID]
      * @custom:permission Public function, anyone can call [中文: 公共函数，任何人都可以调用]
      * @custom:reverts Types.InvalidTargetAmount() if targetAmount is zero or negative [中文: 如果目标金额为零或负数则回滚Types.InvalidTargetAmount()]
@@ -276,14 +284,23 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
      * @custom:emits NoteCreated event with note details [中文: 发出包含票据详情的NoteCreated事件]
      * @custom:gas-optimization Uses unchecked arithmetic for ID increment [中文: 对ID递增使用未检查算术]
      */
-    function createNote(uint256 targetAmount, uint16 interestRateBps,   uint16 borrowingDays) public returns (uint64) {
-        if(targetAmount  <=0 ) revert Types.InvalidTargetAmount();
-        if(interestRateBps > 10_000 || interestRateBps <= 0) revert Types.InterestRateOutOfRange();
-        if(borrowingDays <= 0 || borrowingDays > 1000) revert Types.InvalidBorrowingDays();
+    function createNote(
+        uint256 targetAmount,
+        uint16 interestRateBps,
+        uint16 borrowingDays,
+        string calldata privacyCertificateHash
+    ) public returns (uint64) {
+        if (targetAmount <= 0) revert Types.InvalidTargetAmount();
+        if (interestRateBps > 10_000 || interestRateBps <= 0)
+            revert Types.InterestRateOutOfRange();
+        if (borrowingDays <= 0 || borrowingDays > 1000)
+            revert Types.InvalidBorrowingDays();
         uint64 id = _nextId;
-        unchecked { _nextId = id + 1; }
+        unchecked {
+            _nextId = id + 1;
+        }
         Types.Note memory note = Types.Note({
-            id:id,
+            id: id,
             creator: msg.sender,
             targetAmount: targetAmount,
             platformFeeRateBps: _platformFee,
@@ -291,7 +308,9 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
             status: uint8(Types.NoteStatus.INIT),
             investor: address(0),
             interestRateBps: interestRateBps,
-            contractHash: bytes32(0),
+            contractHash: "",
+            privacyCertificateHash: privacyCertificateHash,
+            privacyCredentialsAbridgedHash: "",
             borrowingDays: borrowingDays,
             expiryTime: 0,
             createdAt: uint64(block.timestamp),
@@ -301,9 +320,15 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
         _notes[id] = note;
         _allNoteIds.push(id);
         _notesByCreator[msg.sender].push(id);
-        emit NoteCreated(id, msg.sender, targetAmount, interestRateBps, borrowingDays);
+        emit NoteCreated(
+            id,
+            msg.sender,
+            targetAmount,
+            interestRateBps,
+            borrowingDays
+        );
         return id;
-     }
+    }
 
     /**
      * @notice Invest in a note by providing funding [中文: 通过提供资金投资票据]
@@ -320,22 +345,27 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
      * @custom:emits Investment event with investment details [中文: 发出包含投资详情的Investment事件]
      * @custom:emits WithdrawPlatformFee event with fee details [中文: 发出包含费用详情的WithdrawPlatformFee事件]
      */
-    function invest(uint64 id) external payable nonReentrant noteExists(id) returns (address) {
+    function invest(
+        uint64 id
+    ) external payable nonReentrant noteExists(id) returns (address) {
         Types.Note storage note = _notes[id];
-        if(note.status != uint8(Types.NoteStatus.PENDING)) revert Types.InvalidNoteStatus();
-        if(msg.sender == note.creator) revert Types.InvalidInvestor();
-        if(msg.value != note.targetAmount) revert Types.InvalidAmount();
+        if (note.status != uint8(Types.NoteStatus.PENDING))
+            revert Types.InvalidNoteStatus();
+        if (msg.sender == note.creator) revert Types.InvalidInvestor();
+        if (msg.value != note.targetAmount) revert Types.InvalidAmount();
         note.status = uint8(Types.NoteStatus.ACTIVE);
-        uint256 payoutPlatform = Math.mulDiv(msg.value, note.platformFeeRateBps, 10000);
-        uint256 payoutCreator = msg.value - payoutPlatform;
-        (bool ok, ) = _platformFeeRecipient.call{value: payoutPlatform}("");
-        if(!ok) revert Types.TransferFailed();
-        ProtocolsContract protocolContract = new ProtocolsContract{value: payoutCreator}(
-            note.id,
-            note.creator,
-            msg.sender
+        uint256 payoutPlatform = Math.mulDiv(
+            msg.value,
+            note.platformFeeRateBps,
+            10000
         );
-        note.expiryTime =  uint64(block.timestamp) + (note.borrowingDays * 1 days);
+        uint256 payoutCreator = msg.value - payoutPlatform;
+        (bool ok, ) = _platformFeeRecipient.call{ value: payoutPlatform }("");
+        if (!ok) revert Types.TransferFailed();
+        ProtocolsContract protocolContract = new ProtocolsContract{
+            value: payoutCreator
+        }(note.id, note.creator, msg.sender);
+        note.expiryTime = block.timestamp + (note.borrowingDays * 1 days);
         note.investor = msg.sender;
         note.protocolContract = address(protocolContract);
         note.platformFeeAmount = payoutPlatform;
@@ -356,10 +386,14 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
      * @custom:reverts Types.InvalidNoteStatus() if note is not in INIT or PENDING status [中文: 如果票据不在INIT或PENDING状态则回滚Types.InvalidNoteStatus()]
      * @custom:emits NoteStatusChanged event with CLOSED status [中文: 发出包含CLOSED状态的NoteStatusChanged事件]
      */
-    function closeNote(uint64 id) external  noteExists(id) returns (uint64) {
+    function closeNote(uint64 id) external noteExists(id) returns (uint64) {
         Types.Note storage note = _notes[id];
-        if(msg.sender != note.creator && msg.sender != owner()) revert Types.NotPermission();
-        if(note.status != uint8(Types.NoteStatus.INIT) && note.status != uint8(Types.NoteStatus.PENDING)) revert Types.InvalidNoteStatus();
+        if (msg.sender != note.creator && msg.sender != owner())
+            revert Types.NotPermission();
+        if (
+            note.status != uint8(Types.NoteStatus.INIT) &&
+            note.status != uint8(Types.NoteStatus.PENDING)
+        ) revert Types.InvalidNoteStatus();
         note.status = uint8(Types.NoteStatus.CLOSED);
         emit NoteStatusChanged(id, uint8(Types.NoteStatus.CLOSED));
         return id;
@@ -369,21 +403,31 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
      * @notice Set a note to pending status for investment [中文: 将票据设置为待投资状态]
      * @dev Changes note status from INIT to PENDING and sets contract hash [中文: 将票据状态从INIT更改为PENDING并设置合约哈希]
      * @param id The ID of the note to set to pending [中文: 要设置为待投资状态的票据ID]
-     * @param contractHash The hash of the associated contract [中文: 关联合约的哈希]
+     * @param contractHash The IPFS CID of the associated contract [中文: 关联合约的IPFS CID]
+     * @param privacyCredentialsAbridgedHash The IPFS CID of the privacy credentials abridged (optional, can be empty string) [中文: 隐私凭证摘要的IPFS CID（可选，可为空字符串）]
      * @return uint64 The ID of the pending note [中文: 待投资票据的ID]
      * @custom:permission Only auditor can call [中文: 只有审计员可以调用]
      * @custom:modifier Uses onlyAuditor to restrict access [中文: 使用onlyAuditor限制访问]
      * @custom:modifier Uses noteExists to ensure note exists [中文: 使用noteExists确保票据存在]
      * @custom:reverts Types.InvalidNoteStatus() if note is not in INIT status [中文: 如果票据不在INIT状态则回滚Types.InvalidNoteStatus()]
-     * @custom:reverts Types.InvalidContractHash() if contract hash is zero [中文: 如果合约哈希为零则回滚Types.InvalidContractHash()]
+     * @custom:reverts Types.InvalidContractHash() if contract hash is empty [中文: 如果合约哈希为空则回滚Types.InvalidContractHash()]
      * @custom:emits NoteStatusChanged event with PENDING status [中文: 发出包含PENDING状态的NoteStatusChanged事件]
      */
-    function pendingNote(uint64 id,bytes32 contractHash) external onlyAuditor noteExists(id) returns (uint64) {
+    function pendingNote(
+        uint64 id,
+        string calldata contractHash,
+        string calldata privacyCredentialsAbridgedHash
+    ) external onlyAuditor noteExists(id) returns (uint64) {
         Types.Note storage note = _notes[id];
-        if(note.status != uint8(Types.NoteStatus.INIT)) revert Types.InvalidNoteStatus();
-        if(contractHash == bytes32(0)) revert Types.InvalidContractHash();
+        if (note.status != uint8(Types.NoteStatus.INIT))
+            revert Types.InvalidNoteStatus();
+        if (bytes(contractHash).length == 0) revert Types.InvalidContractHash();
         note.status = uint8(Types.NoteStatus.PENDING);
         note.contractHash = contractHash;
+        if (bytes(privacyCredentialsAbridgedHash).length > 0) {
+            note
+                .privacyCredentialsAbridgedHash = privacyCredentialsAbridgedHash;
+        }
         note.auditor = msg.sender;
         emit NoteStatusChanged(id, uint8(Types.NoteStatus.PENDING));
         return id;
@@ -402,8 +446,9 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
      */
     function completeNote(uint64 id) external noteExists(id) returns (uint64) {
         Types.Note storage note = _notes[id];
-        if(note.status != uint8(Types.NoteStatus.ACTIVE)) revert Types.InvalidNoteStatus();
-        if(msg.sender != note.protocolContract) revert Types.NotPermission();
+        if (note.status != uint8(Types.NoteStatus.ACTIVE))
+            revert Types.InvalidNoteStatus();
+        if (msg.sender != note.protocolContract) revert Types.NotPermission();
         note.status = uint8(Types.NoteStatus.COMPLETED);
         emit NoteStatusChanged(id, uint8(Types.NoteStatus.COMPLETED));
         return id;
@@ -421,8 +466,9 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
      */
     function defaultNote(uint64 id) external noteExists(id) returns (uint64) {
         Types.Note storage note = _notes[id];
-        if(note.status != uint8(Types.NoteStatus.ACTIVE)) revert Types.InvalidNoteStatus();
-        if(msg.sender != note.protocolContract) revert Types.NotPermission();
+        if (note.status != uint8(Types.NoteStatus.ACTIVE))
+            revert Types.InvalidNoteStatus();
+        if (msg.sender != note.protocolContract) revert Types.NotPermission();
         note.status = uint8(Types.NoteStatus.DEFAULTED);
         emit NoteStatusChanged(id, uint8(Types.NoteStatus.DEFAULTED));
         return id;
@@ -440,9 +486,12 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
      * @custom:emits NoteStatusChanged event with STOP status [中文: 发出包含STOP状态的NoteStatusChanged事件]
      * @custom:security Calls stopProtocol() on the protocol contract [中文: 在协议合约上调用stopProtocol()]
      */
-    function stopNote(uint64 id) external onlyOwner noteExists(id)  returns (uint64) {
+    function stopNote(
+        uint64 id
+    ) external onlyOwner noteExists(id) returns (uint64) {
         Types.Note storage note = _notes[id];
-        if(note.status != uint8(Types.NoteStatus.ACTIVE)) revert Types.InvalidNoteStatus();
+        if (note.status != uint8(Types.NoteStatus.ACTIVE))
+            revert Types.InvalidNoteStatus();
         IProtocolsContract(note.protocolContract).stopProtocol();
         note.status = uint8(Types.NoteStatus.STOP);
         emit NoteStatusChanged(id, uint8(Types.NoteStatus.STOP));
@@ -459,7 +508,7 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
      * @custom:emits PlatformFeeChanged event with new fee and recipient [中文: 发出包含新费用和接收者的PlatformFeeChanged事件]
      */
     function setPlatformFee(uint256 platformFee) external onlyOwner {
-        if(platformFee > 10_000) revert Types.InvalidPlatformFee();
+        if (platformFee > 10_000) revert Types.InvalidPlatformFee();
         _platformFee = platformFee;
         emit PlatformFeeChanged(platformFee, _platformFeeRecipient);
     }
@@ -473,8 +522,10 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
      * @custom:reverts Types.InvalidAddress() if recipient is zero address [中文: 如果接收者为零地址则回滚Types.InvalidAddress()]
      * @custom:emits PlatformFeeChanged event with current fee and new recipient [中文: 发出包含当前费用和新接收者的PlatformFeeChanged事件]
      */
-    function setPlatformFeeRecipient(address platformFeeRecipient) external onlyOwner {
-        if(platformFeeRecipient == address(0)) revert Types.InvalidAddress();
+    function setPlatformFeeRecipient(
+        address platformFeeRecipient
+    ) external onlyOwner {
+        if (platformFeeRecipient == address(0)) revert Types.InvalidAddress();
         _platformFeeRecipient = platformFeeRecipient;
         emit PlatformFeeChanged(_platformFee, platformFeeRecipient);
     }
@@ -512,5 +563,4 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
     function getTotalNotes() external view returns (uint256) {
         return _allNoteIds.length;
     }
-
 }

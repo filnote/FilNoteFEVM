@@ -19,6 +19,19 @@
   },
   {
     "type": "function",
+    "name": "addAuditor",
+    "inputs": [
+      {
+        "name": "auditor",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "closeNote",
     "inputs": [
       {
@@ -105,6 +118,19 @@
   },
   {
     "type": "function",
+    "name": "getAuditors",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address[]",
+        "internalType": "address[]"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "getNote",
     "inputs": [
       {
@@ -155,9 +181,14 @@
             "internalType": "address"
           },
           {
+            "name": "auditor",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
             "name": "contractHash",
-            "type": "bytes32",
-            "internalType": "bytes32"
+            "type": "string",
+            "internalType": "string"
           },
           {
             "name": "expiryTime",
@@ -241,9 +272,14 @@
             "internalType": "address"
           },
           {
+            "name": "auditor",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
             "name": "contractHash",
-            "type": "bytes32",
-            "internalType": "bytes32"
+            "type": "string",
+            "internalType": "string"
           },
           {
             "name": "expiryTime",
@@ -332,9 +368,14 @@
             "internalType": "address"
           },
           {
+            "name": "auditor",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
             "name": "contractHash",
-            "type": "bytes32",
-            "internalType": "bytes32"
+            "type": "string",
+            "internalType": "string"
           },
           {
             "name": "expiryTime",
@@ -484,6 +525,25 @@
   },
   {
     "type": "function",
+    "name": "isAuditor",
+    "inputs": [
+      {
+        "name": "auditor",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "owner",
     "inputs": [],
     "outputs": [
@@ -506,8 +566,8 @@
       },
       {
         "name": "contractHash",
-        "type": "bytes32",
-        "internalType": "bytes32"
+        "type": "string",
+        "internalType": "string"
       }
     ],
     "outputs": [
@@ -517,6 +577,19 @@
         "internalType": "uint64"
       }
     ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "removeAuditor",
+    "inputs": [
+      {
+        "name": "auditor",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
     "stateMutability": "nonpayable"
   },
   {
@@ -586,6 +659,25 @@
   },
   {
     "type": "event",
+    "name": "AuditorUpdated",
+    "inputs": [
+      {
+        "name": "auditor",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "isActive",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "Investment",
     "inputs": [
       {
@@ -648,12 +740,6 @@
         "type": "uint16",
         "indexed": false,
         "internalType": "uint16"
-      },
-      {
-        "name": "expiryTime",
-        "type": "uint64",
-        "indexed": false,
-        "internalType": "uint64"
       }
     ],
     "anonymous": false
@@ -733,6 +819,16 @@
       }
     ],
     "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "AuditorAlreadyExists",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "AuditorNotExists",
+    "inputs": []
   },
   {
     "type": "error",
