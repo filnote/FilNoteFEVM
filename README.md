@@ -52,7 +52,7 @@ CLOSED   STOP
 4. **COMPLETED**: Successfully repaid with interest
 5. **DEFAULTED**: Failed to meet repayment obligations
 6. **CLOSED**: Closed by creator or owner before investment
-7. **STOP**: Stopped by owner during active state
+7. **STOP**: Stopped by contract owner during active state, all funds returned to investor
 
 ### Privacy Certificate Management
 
@@ -70,7 +70,7 @@ CLOSED   STOP
 - `invest(uint64 id)`: Invest in a pending note (payable)
 - `pendingNote(uint64 id, string calldata contractHash, string calldata encryptedPrivacyCertificateHash, string calldata privacyCredentialsAbridgedHash)`: Approve note for investment (auditor only)
 - `closeNote(uint64 id)`: Close a note (creator or owner)
-- `stopNote(uint64 id)`: Stop an active note (owner only)
+- `stopNote(uint64 id)`: Stop an active note (owner only), returns all funds to investor
 - `completeNote(uint64 id)`: Mark note as completed (protocol contract only)
 - `defaultNote(uint64 id)`: Mark note as defaulted (protocol contract only)
 
@@ -97,7 +97,7 @@ CLOSED   STOP
 - `withdrawFundingAmount()`: Creator withdraws initial funding
 - `spWithdrawPoolAmount(uint256 amount)`: Creator withdraws from pool (with reserve check)
 - `investorWithdrawPoolAmount()`: Investor withdraws after maturity
-- `stopProtocol()`: Stop protocol and return funds to investor (FilNote contract only)
+- `stopProtocol()`: Stop protocol and return all contract balance to investor (FilNote contract only)
 
 #### Query Functions
 

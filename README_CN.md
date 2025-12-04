@@ -52,7 +52,7 @@ CLOSED   STOP
 4. **COMPLETED**: 成功偿还本金和利息
 5. **DEFAULTED**: 未能履行还款义务
 6. **CLOSED**: 在投资前被创建者或所有者关闭
-7. **STOP**: 在活跃状态下被所有者停止
+7. **STOP**: 在活跃状态下被合约所有者停止，所有资金返还给投资者
 
 ### 隐私凭证管理
 
@@ -70,7 +70,7 @@ CLOSED   STOP
 - `invest(uint64 id)`: 投资待投资票据（可支付函数）
 - `pendingNote(uint64 id, string calldata contractHash, string calldata encryptedPrivacyCertificateHash, string calldata privacyCredentialsAbridgedHash)`: 批准票据进行投资（仅审计员）
 - `closeNote(uint64 id)`: 关闭票据（创建者或所有者）
-- `stopNote(uint64 id)`: 停止活跃票据（仅所有者）
+- `stopNote(uint64 id)`: 停止活跃票据（仅所有者），将所有资金返还给投资者
 - `completeNote(uint64 id)`: 标记票据为已完成（仅协议合约）
 - `defaultNote(uint64 id)`: 标记票据为违约（仅协议合约）
 
@@ -97,7 +97,7 @@ CLOSED   STOP
 - `withdrawFundingAmount()`: 创建者提取初始资金
 - `spWithdrawPoolAmount(uint256 amount)`: 创建者从资金池提取（保留最低储备）
 - `investorWithdrawPoolAmount()`: 投资者在到期后提取
-- `stopProtocol()`: 停止协议并向投资者返还资金（仅 FilNote 合约）
+- `stopProtocol()`: 停止协议并将合约中的所有余额返还给投资者（仅 FilNote 合约）
 
 #### 查询函数
 
