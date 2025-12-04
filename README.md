@@ -10,6 +10,7 @@ FilNote is a decentralized investment note protocol built on Filecoin EVM (FEVM)
 
 - **Note Creation**: Create investment notes with customizable target amounts, interest rates, and borrowing periods
 - **Auditor System**: Multi-auditor approval system for note verification before investment
+- **Privacy Certificate Support**: Support for encrypted privacy certificate storage and public information preview
 - **Protocol Contracts**: Automated protocol contract deployment for each investment
 - **Platform Fees**: Configurable platform fee system with recipient management
 - **Lifecycle Management**: Complete note lifecycle from creation to completion/default
@@ -21,11 +22,13 @@ FilNote is a decentralized investment note protocol built on Filecoin EVM (FEVM)
 ### Core Contracts
 
 1. **FilNoteContract** (`src/FilNote.sol`)
+
    - Main contract managing investment notes
    - Handles note creation, investment, and status management
    - Manages auditor system and platform fees
 
 2. **ProtocolsContract** (`src/Protocols.sol`)
+
    - Protocol contract deployed for each active investment
    - Manages funding pool and withdrawals
    - Handles interest calculations and maturity checks
@@ -44,12 +47,18 @@ CLOSED   STOP
 ```
 
 1. **INIT**: Note created by creator, awaiting auditor approval
-2. **PENDING**: Approved by auditor, open for investment
+2. **PENDING**: Approved by auditor with contract hash (and optionally encrypted privacy certificate hash and public preview hash), open for investment
 3. **ACTIVE**: Investment received, protocol contract deployed
 4. **COMPLETED**: Successfully repaid with interest
 5. **DEFAULTED**: Failed to meet repayment obligations
 6. **CLOSED**: Closed by creator or owner before investment
 7. **STOP**: Stopped by owner during active state
+
+### Privacy Certificate Management
+
+- **Encrypted Privacy Certificate Hash**: Full privacy certificate IPFS hash encrypted using platform wallet, stored on-chain
+- **Privacy Credentials Abridged Hash**: Public preview version (jsonData) of privacy certificate, stored on IPFS as JSON, visible to all users
+- **Access Control**: Full privacy certificate can only be decrypted by note creators or investors after investment
 
 ## Contract Details
 
@@ -59,7 +68,7 @@ CLOSED   STOP
 
 - `createNote(uint256 targetAmount, uint16 interestRateBps, uint16 borrowingDays)`: Create a new investment note
 - `invest(uint64 id)`: Invest in a pending note (payable)
-- `pendingNote(uint64 id, string calldata contractHash)`: Approve note for investment (auditor only)
+- `pendingNote(uint64 id, string calldata contractHash, string calldata encryptedPrivacyCertificateHash, string calldata privacyCredentialsAbridgedHash)`: Approve note for investment (auditor only)
 - `closeNote(uint64 id)`: Close a note (creator or owner)
 - `stopNote(uint64 id)`: Stop an active note (owner only)
 - `completeNote(uint64 id)`: Mark note as completed (protocol contract only)
@@ -121,7 +130,7 @@ forge create src/FilNote.sol:FilNoteContract \
   -vvvv
 ```
 
-**Current deployed testnet address**: [0xfa018500f6990b1468685f55c3c05a34f26cab73](https://filecoin-testnet.blockscout.com/address/0xfa018500f6990b1468685f55c3c05a34f26cab73?tab=read_contract)
+**Current deployed testnet address**: [0xD88dB8719f066a88F7FA67Ce7761b428f95B7C30](https://filecoin-testnet.blockscout.com/address/0xD88dB8719f066a88F7FA67Ce7761b428f95B7C30?tab=read_contract)
 
 ### Flatten Contract
 
@@ -148,10 +157,12 @@ uint64 noteId = filNoteContract.createNote(
 ### Approving a Note (Auditor)
 
 ```solidity
-// Approve note with IPFS contract hash
+// Approve note with IPFS contract hash and optional privacy certificate
 filNoteContract.pendingNote(
     noteId,
-    "QmYourIPFSHashHere"  // contractHash
+    "QmYourIPFSHashHere",  // contractHash (required)
+    "encryptedHash...",     // encryptedPrivacyCertificateHash (optional)
+    "QmPreviewHash..."      // privacyCredentialsAbridgedHash (optional, public preview)
 );
 ```
 
