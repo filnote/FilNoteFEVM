@@ -275,7 +275,6 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
      * @param targetAmount The target funding amount for the note [中文: 票据的目标融资金额]
      * @param interestRateBps The interest rate in basis points (0-10000) [中文: 利率，以基点为单位(0-10000)]
      * @param borrowingDays The number of days for the borrowing period [中文: 借款期间的天数]
-     * @param privacyCertificateHash The IPFS CID of the privacy certificate (optional, can be empty string) [中文: 隐私凭证的IPFS CID（可选，可为空字符串）]
      * @return uint64 The unique ID of the created note [中文: 创建的票据的唯一ID]
      * @custom:permission Public function, anyone can call [中文: 公共函数，任何人都可以调用]
      * @custom:reverts Types.InvalidTargetAmount() if targetAmount is zero or negative [中文: 如果目标金额为零或负数则回滚Types.InvalidTargetAmount()]
@@ -283,12 +282,12 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
      * @custom:reverts Types.InvalidBorrowingDays() if borrowing days are invalid [中文: 如果借款天数无效则回滚Types.InvalidBorrowingDays()]
      * @custom:emits NoteCreated event with note details [中文: 发出包含票据详情的NoteCreated事件]
      * @custom:gas-optimization Uses unchecked arithmetic for ID increment [中文: 对ID递增使用未检查算术]
+     * @custom:note Privacy certificate hash is set during audit via pendingNote() [中文: 隐私凭证哈希在审计时通过pendingNote()设置]
      */
     function createNote(
         uint256 targetAmount,
         uint16 interestRateBps,
-        uint16 borrowingDays,
-        string calldata privacyCertificateHash
+        uint16 borrowingDays
     ) public returns (uint64) {
         if (targetAmount <= 0) revert Types.InvalidTargetAmount();
         if (interestRateBps > 10_000 || interestRateBps <= 0)
@@ -309,7 +308,7 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
             investor: address(0),
             interestRateBps: interestRateBps,
             contractHash: "",
-            privacyCertificateHash: privacyCertificateHash,
+            privacyCertificateHash: "",
             privacyCredentialsAbridgedHash: "",
             borrowingDays: borrowingDays,
             expiryTime: 0,
@@ -401,9 +400,10 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
 
     /**
      * @notice Set a note to pending status for investment [中文: 将票据设置为待投资状态]
-     * @dev Changes note status from INIT to PENDING and sets contract hash [中文: 将票据状态从INIT更改为PENDING并设置合约哈希]
+     * @dev Changes note status from INIT to PENDING and sets contract hash, encrypted privacy certificate hash, and abridged hash [中文: 将票据状态从INIT更改为PENDING并设置合约哈希、加密的隐私凭证哈希和摘要哈希]
      * @param id The ID of the note to set to pending [中文: 要设置为待投资状态的票据ID]
      * @param contractHash The IPFS CID of the associated contract [中文: 关联合约的IPFS CID]
+     * @param encryptedPrivacyCertificateHash The encrypted IPFS CID of the privacy certificate (optional, can be empty string) [中文: 加密的隐私凭证IPFS CID（可选，可为空字符串）]
      * @param privacyCredentialsAbridgedHash The IPFS CID of the privacy credentials abridged (optional, can be empty string) [中文: 隐私凭证摘要的IPFS CID（可选，可为空字符串）]
      * @return uint64 The ID of the pending note [中文: 待投资票据的ID]
      * @custom:permission Only auditor can call [中文: 只有审计员可以调用]
@@ -416,6 +416,7 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
     function pendingNote(
         uint64 id,
         string calldata contractHash,
+        string calldata encryptedPrivacyCertificateHash,
         string calldata privacyCredentialsAbridgedHash
     ) external onlyAuditor noteExists(id) returns (uint64) {
         Types.Note storage note = _notes[id];
@@ -424,6 +425,9 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
         if (bytes(contractHash).length == 0) revert Types.InvalidContractHash();
         note.status = uint8(Types.NoteStatus.PENDING);
         note.contractHash = contractHash;
+        if (bytes(encryptedPrivacyCertificateHash).length > 0) {
+            note.privacyCertificateHash = encryptedPrivacyCertificateHash;
+        }
         if (bytes(privacyCredentialsAbridgedHash).length > 0) {
             note
                 .privacyCredentialsAbridgedHash = privacyCredentialsAbridgedHash;
