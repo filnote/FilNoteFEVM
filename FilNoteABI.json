@@ -86,11 +86,6 @@
         "name": "borrowingDays",
         "type": "uint16",
         "internalType": "uint16"
-      },
-      {
-        "name": "privacyCertificateHash",
-        "type": "string",
-        "internalType": "string"
       }
     ],
     "outputs": [
@@ -601,6 +596,11 @@
       },
       {
         "name": "contractHash",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "encryptedPrivacyCertificateHash",
         "type": "string",
         "internalType": "string"
       },
