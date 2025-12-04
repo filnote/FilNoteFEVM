@@ -86,6 +86,11 @@
         "name": "borrowingDays",
         "type": "uint16",
         "internalType": "uint16"
+      },
+      {
+        "name": "privacyCertificateHash",
+        "type": "string",
+        "internalType": "string"
       }
     ],
     "outputs": [
@@ -191,9 +196,19 @@
             "internalType": "string"
           },
           {
+            "name": "privacyCertificateHash",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "privacyCredentialsAbridgedHash",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
             "name": "expiryTime",
-            "type": "uint64",
-            "internalType": "uint64"
+            "type": "uint256",
+            "internalType": "uint256"
           },
           {
             "name": "createdAt",
@@ -282,9 +297,19 @@
             "internalType": "string"
           },
           {
+            "name": "privacyCertificateHash",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "privacyCredentialsAbridgedHash",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
             "name": "expiryTime",
-            "type": "uint64",
-            "internalType": "uint64"
+            "type": "uint256",
+            "internalType": "uint256"
           },
           {
             "name": "createdAt",
@@ -378,9 +403,19 @@
             "internalType": "string"
           },
           {
+            "name": "privacyCertificateHash",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "privacyCredentialsAbridgedHash",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
             "name": "expiryTime",
-            "type": "uint64",
-            "internalType": "uint64"
+            "type": "uint256",
+            "internalType": "uint256"
           },
           {
             "name": "createdAt",
@@ -566,6 +601,11 @@
       },
       {
         "name": "contractHash",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "privacyCredentialsAbridgedHash",
         "type": "string",
         "internalType": "string"
       }
