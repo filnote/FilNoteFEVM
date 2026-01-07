@@ -1,124 +1,204 @@
-# FilNote - Decentralized Investment Note Protocol on Filecoin EVM
+<div align="center">
 
-[中文文档](./README_CN.md)
+# 🎯 FilNote
 
-## Overview
+**Decentralized Investment Note Protocol on Filecoin EVM**
 
-FilNote is a decentralized investment note protocol built on Filecoin EVM (FEVM). It enables users to create, invest in, and manage investment notes with automated interest calculations and protocol contract management. The system implements a secure, transparent, and trustless mechanism for peer-to-peer lending and investment.
+[![Solidity](https://img.shields.io/badge/Solidity-0.8.22-blue.svg)](https://soliditylang.org/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
+[![Foundry](https://img.shields.io/badge/Built%20with-Foundry-000000.svg)](https://book.getfoundry.sh/)
 
-## Features
+[English](./README.md) | [中文](./README_CN.md)
 
-- **Note Creation**: Create investment notes with customizable target amounts, interest rates, and borrowing periods
-- **Auditor System**: Multi-auditor approval system for note verification before investment
-- **Privacy Certificate Support**: Support for encrypted privacy certificate storage and public information preview
-- **Protocol Contracts**: Automated protocol contract deployment for each investment
-- **Platform Fees**: Configurable platform fee system with recipient management
-- **Lifecycle Management**: Complete note lifecycle from creation to completion/default
-- **Security**: Built with OpenZeppelin's security libraries (Ownable, ReentrancyGuard)
-- **Pagination Support**: Efficient data retrieval with pagination for large datasets
+</div>
 
-## Architecture
+---
+
+## 📋 Table of Contents
+
+- [Overview](#-overview)
+- [Key Features](#-key-features)
+- [Architecture](#-architecture)
+- [Quick Start](#-quick-start)
+- [Contract Details](#-contract-details)
+- [Security](#-security)
+- [Development](#-development)
+- [Related Repositories](#-related-repositories)
+
+---
+
+## 🎯 Overview
+
+FilNote is a decentralized investment note protocol built on **Filecoin EVM (FEVM)**. It enables users to create, invest in, and manage investment notes with automated interest calculations and protocol contract management. The system implements a secure, transparent, and trustless mechanism for peer-to-peer lending and investment.
+
+### What is FilNote?
+
+FilNote maps centralized FIL lending into real-world assets (RWA) like debt or income certificates. It provides a complete lifecycle management system for investment notes, from creation to completion or default, with built-in security features and auditor verification.
+
+---
+
+## ✨ Key Features
+
+| Feature                     | Description                                                                                     |
+| --------------------------- | ----------------------------------------------------------------------------------------------- |
+| 📝 **Note Creation**        | Create investment notes with customizable target amounts, interest rates, and borrowing periods |
+| ✅ **Auditor System**       | Multi-auditor approval system for note verification before investment                           |
+| 🔒 **Privacy Certificates** | Encrypted privacy certificate storage with public information preview via IPFS                  |
+| 🤖 **Protocol Contracts**   | Automated protocol contract deployment for each active investment                               |
+| 💰 **Platform Fees**        | Configurable platform fee system (default 2%) with recipient management                         |
+| 🔄 **Lifecycle Management** | Complete note lifecycle: INIT → PENDING → ACTIVE → COMPLETED/DEFAULTED                          |
+| 🛡️ **Security**             | Built with OpenZeppelin's battle-tested libraries (Ownable, ReentrancyGuard)                    |
+| 📊 **Efficient Queries**    | Pagination support for large datasets (max 100 items per query)                                 |
+
+---
+
+## 🏗️ Architecture
+
+### System Components
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    FilNote Ecosystem                        │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐  │
+│  │   Frontend   │───▶│  Backend API │───▶│   Smart      │  │
+│  │  (Quasar)    │    │   (NestJS)   │    │  Contracts   │  │
+│  └──────────────┘    └──────────────┘    └──────────────┘  │
+│         │                    │                    │          │
+│         │                    │                    │          │
+│         └────────────────────┴────────────────────┘         │
+│                              │                              │
+│                              ▼                              │
+│                    ┌──────────────┐                        │
+│                    │     IPFS     │                        │
+│                    │   (Pinata)   │                        │
+│                    └──────────────┘                        │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
 
 ### Core Contracts
 
-1. **FilNoteContract** (`src/FilNote.sol`)
+#### 1. FilNoteContract (`src/FilNote.sol`)
 
-   - Main contract managing investment notes
-   - Handles note creation, investment, and status management
-   - Manages auditor system and platform fees
+The main contract managing the entire investment note lifecycle.
 
-2. **ProtocolsContract** (`src/Protocols.sol`)
+**Responsibilities:**
 
-   - Protocol contract deployed for each active investment
-   - Manages funding pool and withdrawals
-   - Handles interest calculations and maturity checks
+- ✅ Note creation and validation
+- ✅ Investment processing
+- ✅ Status management (7 states)
+- ✅ Auditor system management
+- ✅ Platform fee configuration
+- ✅ Query functions with pagination
 
-3. **Types** (`src/utils/Types.sol`)
-   - Data structures and error definitions
-   - Note status enumeration
-   - Protocol information structures
+**Key Metrics:**
 
-### Note Lifecycle
+- Total Functions: 20+
+- State Variables: 10
+- Events: 6
+- Modifiers: 2
+
+#### 2. ProtocolsContract (`src/Protocols.sol`)
+
+Deployed automatically for each active investment to manage individual note operations.
+
+**Responsibilities:**
+
+- 💰 Funding amount management
+- 📊 Pool amount tracking
+- 🧮 Interest calculations
+- ⏰ Maturity checks
+- 🛑 Emergency stop functionality
+
+**Key Metrics:**
+
+- Immutable Variables: 4
+- State Variables: 3
+- Functions: 6
+
+#### 3. Types (`src/utils/Types.sol`)
+
+Shared data structures and error definitions.
+
+**Contents:**
+
+- NoteStatus enum (7 states)
+- Note struct (15 fields)
+- ProtocolInfo struct
+- 15 custom error types
+
+---
+
+## 🔄 Note Lifecycle
 
 ```
-INIT → PENDING → ACTIVE → COMPLETED/DEFAULTED
-  ↓        ↓
-CLOSED   STOP
+┌──────┐
+│ INIT │  ← Note created by creator
+└──┬───┘
+   │
+   ├─[Auditor Approval]─┐
+   │                     │
+   ▼                     ▼
+┌─────────┐         ┌─────────┐
+│ PENDING │         │ CLOSED  │  ← Closed by creator/owner
+└──┬──────┘         └─────────┘
+   │
+   ├─[Investment]─┐
+   │              │
+   ▼              ▼
+┌─────────┐   ┌─────────┐
+│ ACTIVE  │   │  STOP   │  ← Stopped by owner
+└──┬──────┘   └─────────┘
+   │
+   ├─[Repayment]─┐
+   │             │
+   ▼             ▼
+┌──────────┐  ┌──────────┐
+│COMPLETED │  │DEFAULTED │
+└──────────┘  └──────────┘
 ```
 
-1. **INIT**: Note created by creator, awaiting auditor approval
-2. **PENDING**: Approved by auditor with contract hash (and optionally encrypted privacy certificate hash and public preview hash), open for investment
-3. **ACTIVE**: Investment received, protocol contract deployed
-4. **COMPLETED**: Successfully repaid with interest
-5. **DEFAULTED**: Failed to meet repayment obligations
-6. **CLOSED**: Closed by creator or owner before investment
-7. **STOP**: Stopped by contract owner during active state, all funds returned to investor
+### Status Descriptions
 
-### Privacy Certificate Management
+| Status        | Description                                     | Who Can Trigger   |
+| ------------- | ----------------------------------------------- | ----------------- |
+| **INIT**      | Note created, awaiting auditor approval         | Creator           |
+| **PENDING**   | Approved by auditor, open for investment        | Auditor           |
+| **ACTIVE**    | Investment received, protocol contract deployed | Investor          |
+| **COMPLETED** | Successfully repaid with interest               | Protocol Contract |
+| **DEFAULTED** | Failed to meet repayment obligations            | Protocol Contract |
+| **CLOSED**    | Closed before investment                        | Creator/Owner     |
+| **STOP**      | Stopped during active state, funds returned     | Owner             |
 
-- **Encrypted Privacy Certificate Hash**: Full privacy certificate IPFS hash encrypted using platform wallet, stored on-chain
-- **Privacy Credentials Abridged Hash**: Public preview version (jsonData) of privacy certificate, stored on IPFS as JSON, visible to all users
-- **Access Control**: Full privacy certificate can only be decrypted by note creators or investors after investment
+---
 
-## Contract Details
-
-### FilNoteContract
-
-#### Key Functions
-
-- `createNote(uint256 targetAmount, uint16 interestRateBps, uint16 borrowingDays)`: Create a new investment note
-- `invest(uint64 id)`: Invest in a pending note (payable)
-- `pendingNote(uint64 id, string calldata contractHash, string calldata encryptedPrivacyCertificateHash, string calldata privacyCredentialsAbridgedHash)`: Approve note for investment (auditor only)
-- `closeNote(uint64 id)`: Close a note (creator or owner)
-- `stopNote(uint64 id)`: Stop an active note (owner only), returns all funds to investor
-- `completeNote(uint64 id)`: Mark note as completed (protocol contract only)
-- `defaultNote(uint64 id)`: Mark note as defaulted (protocol contract only)
-
-#### Query Functions
-
-- `getNote(uint64 id)`: Get note by ID
-- `getNotes(uint256 offset, uint256 limit)`: Get paginated list of notes
-- `getNoteByIds(uint64[] calldata ids)`: Get multiple notes by IDs
-- `getNotesByCreator(address creator, uint256 offset, uint256 limit)`: Get creator's notes
-- `getNotesByInvestor(address investor, uint256 offset, uint256 limit)`: Get investor's notes
-- `getTotalNotes()`: Get total number of notes
-
-#### Admin Functions
-
-- `addAuditor(address auditor)`: Add an auditor (owner only)
-- `removeAuditor(address auditor)`: Remove an auditor (owner only)
-- `setPlatformFee(uint256 platformFee)`: Set platform fee rate (owner only)
-- `setPlatformFeeRecipient(address platformFeeRecipient)`: Set fee recipient (owner only)
-
-### ProtocolsContract
-
-#### Key Functions
-
-- `withdrawFundingAmount()`: Creator withdraws initial funding
-- `spWithdrawPoolAmount(uint256 amount)`: Creator withdraws from pool (with reserve check)
-- `investorWithdrawPoolAmount()`: Investor withdraws after maturity
-- `stopProtocol()`: Stop protocol and return all contract balance to investor (FilNote contract only)
-
-#### Query Functions
-
-- `getProtocolInfo()`: Get associated note information
-- `getContractInfo()`: Get funding and pool amounts
-
-## Deployment
+## 🚀 Quick Start
 
 ### Prerequisites
 
-- [Foundry](https://book.getfoundry.sh/getting-started/installation)
-- Node.js and npm/yarn
-- Private key for deployment
+- [Foundry](https://book.getfoundry.sh/getting-started/installation) (latest version)
+- Node.js 18+ and npm/yarn
+- Private key for deployment (keep secure!)
 
-### Build
+### Installation
 
 ```bash
+# Clone the repository
+git clone https://github.com/filnote/FilNoteFEVM.git
+cd FilNoteFEVM
+
+# Install dependencies
+forge install
+
+# Build contracts
 forge build
 ```
 
-### Calibration Testnet Deployment
+### Deployment
+
+#### Calibration Testnet
 
 ```bash
 forge create src/FilNote.sol:FilNoteContract \
@@ -130,21 +210,153 @@ forge create src/FilNote.sol:FilNoteContract \
   -vvvv
 ```
 
-**Current deployed testnet address**: [0xD88dB8719f066a88F7FA67Ce7761b428f95B7C30](https://filecoin-testnet.blockscout.com/address/0xD88dB8719f066a88F7FA67Ce7761b428f95B7C30?tab=read_contract)
+**Deployed Address**: [`0xD88dB8719f066a88F7FA67Ce7761b428f95B7C30`](https://filecoin-testnet.blockscout.com/address/0xD88dB8719f066a88F7FA67Ce7761b428f95B7C30?tab=read_contract)
 
-### Flatten Contract
+---
+
+## 📖 Contract Details
+
+### FilNoteContract Functions
+
+#### Core Operations
+
+| Function                  | Description                    | Access            |
+| ------------------------- | ------------------------------ | ----------------- |
+| `createNote(...)`         | Create a new investment note   | Public            |
+| `invest(uint64 id)`       | Invest in a pending note       | Public (payable)  |
+| `pendingNote(...)`        | Approve note for investment    | Auditor only      |
+| `closeNote(uint64 id)`    | Close a note before investment | Creator/Owner     |
+| `stopNote(uint64 id)`     | Stop active note, return funds | Owner only        |
+| `completeNote(uint64 id)` | Mark note as completed         | Protocol Contract |
+| `defaultNote(uint64 id)`  | Mark note as defaulted         | Protocol Contract |
+
+#### Query Functions
+
+| Function                     | Description          | Returns        |
+| ---------------------------- | -------------------- | -------------- |
+| `getNote(uint64 id)`         | Get note by ID       | `Types.Note`   |
+| `getNotes(offset, limit)`    | Get paginated notes  | `Types.Note[]` |
+| `getNoteByIds(uint64[] ids)` | Get multiple notes   | `Types.Note[]` |
+| `getNotesByCreator(...)`     | Get creator's notes  | `uint64[]`     |
+| `getNotesByInvestor(...)`    | Get investor's notes | `uint64[]`     |
+| `getTotalNotes()`            | Get total note count | `uint256`      |
+
+#### Admin Functions
+
+| Function                           | Description           | Access     |
+| ---------------------------------- | --------------------- | ---------- |
+| `addAuditor(address)`              | Add an auditor        | Owner only |
+| `removeAuditor(address)`           | Remove an auditor     | Owner only |
+| `setPlatformFee(uint256)`          | Set platform fee rate | Owner only |
+| `setPlatformFeeRecipient(address)` | Set fee recipient     | Owner only |
+
+### ProtocolsContract Functions
+
+| Function                        | Description                       | Access                |
+| ------------------------------- | --------------------------------- | --------------------- |
+| `withdrawFundingAmount()`       | Creator withdraws initial funding | Creator only          |
+| `spWithdrawPoolAmount(uint256)` | Creator withdraws from pool       | Creator only          |
+| `investorWithdrawPoolAmount()`  | Investor withdraws after maturity | Investor only         |
+| `stopProtocol()`                | Stop and return all funds         | FilNote Contract only |
+
+---
+
+## 🔐 Security Features
+
+### Implemented Protections
+
+| Security Feature          | Implementation                                  | Status |
+| ------------------------- | ----------------------------------------------- | ------ |
+| **Reentrancy Protection** | ReentrancyGuard on all state-changing functions | ✅     |
+| **Access Control**        | Ownable for owner-only functions                | ✅     |
+| **Input Validation**      | Comprehensive parameter checks                  | ✅     |
+| **Safe Math**             | OpenZeppelin Math library                       | ✅     |
+| **Minimum Reserve**       | Protocol contracts maintain reserves            | ✅     |
+| **Auditor Verification**  | Multi-auditor approval system                   | ✅     |
+| **Amount Limits**         | MAX_TARGET_AMOUNT constant (1B FIL)             | ✅     |
+| **Gas Optimization**      | O(1) auditor lookup, efficient storage          | ✅     |
+
+### Security Best Practices
+
+- ✅ All external calls use `call{value}()` with error handling
+- ✅ State changes follow Check-Effects-Interactions pattern
+- ✅ Custom errors for gas-efficient reverts
+- ✅ Immutable variables where possible
+- ✅ Events for all important state changes
+
+---
+
+## 💻 Development
+
+### Project Structure
+
+```
+FilNoteFEVM/
+├── src/
+│   ├── FilNote.sol          # Main contract (575 lines)
+│   ├── Protocols.sol         # Protocol contract (168 lines)
+│   └── utils/
+│       └── Types.sol         # Data structures & errors
+├── script/                   # Deployment scripts
+├── test/                     # Test files
+├── lib/                      # Dependencies
+│   ├── openzeppelin-contracts/
+│   ├── forge-std/
+│   └── filecoin-solidity-api/
+├── out/                      # Build artifacts
+├── foundry.toml              # Foundry configuration
+└── package.json              # Node.js dependencies
+```
+
+### Technology Stack
+
+| Component     | Technology   | Version             |
+| ------------- | ------------ | ------------------- |
+| **Language**  | Solidity     | ^0.8.22             |
+| **Framework** | Foundry      | Latest              |
+| **Security**  | OpenZeppelin | v5.x                |
+| **Network**   | Filecoin EVM | Calibration/Mainnet |
+
+### Development Commands
 
 ```bash
+# Build contracts
+forge build
+
+# Run tests
+forge test
+
+# Format code
+yarn prettier
+
+# Lint Solidity
+yarn solhint
+
+# Run all checks
+yarn lint
+
+# Flatten contract
 forge flatten src/FilNote.sol -o flattened/FilNote.sol
 ```
 
-## Usage
+### Configuration
+
+**Foundry Settings** (`foundry.toml`):
+
+- Solidity version: `0.8.22`
+- Optimizer: Enabled (200 runs)
+- Via IR: Enabled
+- Chain ID: 314159 (Calibration testnet)
+
+---
+
+## 📚 Usage Examples
 
 ### Creating a Note
 
 ```solidity
 // Create a note with:
-// - Target amount: 1 FIL (1e18 wei)
+// - Target amount: 1 FIL
 // - Interest rate: 5% (500 basis points)
 // - Borrowing period: 30 days
 uint64 noteId = filNoteContract.createNote(
@@ -157,12 +369,12 @@ uint64 noteId = filNoteContract.createNote(
 ### Approving a Note (Auditor)
 
 ```solidity
-// Approve note with IPFS contract hash and optional privacy certificate
+// Approve note with IPFS hashes
 filNoteContract.pendingNote(
     noteId,
-    "QmYourIPFSHashHere",  // contractHash (required)
-    "encryptedHash...",     // encryptedPrivacyCertificateHash (optional)
-    "QmPreviewHash..."      // privacyCredentialsAbridgedHash (optional, public preview)
+    "QmYourIPFSHashHere",      // contractHash (required)
+    "encryptedHash...",         // encryptedPrivacyCertificateHash (optional)
+    "QmPreviewHash..."          // privacyCredentialsAbridgedHash (optional)
 );
 ```
 
@@ -173,7 +385,7 @@ filNoteContract.pendingNote(
 filNoteContract.invest{value: 1e18}(noteId);
 ```
 
-### Withdrawing Funds (Protocol Contract)
+### Withdrawing Funds
 
 ```solidity
 // Creator withdraws initial funding
@@ -186,83 +398,64 @@ protocolContract.spWithdrawPoolAmount(amount);
 protocolContract.investorWithdrawPoolAmount();
 ```
 
-## Security Features
+---
 
-- **Reentrancy Protection**: All state-changing functions use ReentrancyGuard
-- **Access Control**: Owner-only functions for critical operations
-- **Input Validation**: Comprehensive parameter validation
-- **Safe Math**: Using OpenZeppelin's Math library for calculations
-- **Minimum Reserve**: Protocol contracts maintain minimum reserve for investor protection
-- **Auditor System**: Multi-auditor approval for note verification
+## 🗓️ Development Timeline
 
-## Development
+FilNote has been developed through four major phases:
 
-### Project Structure
+| Phase       | Period         | Focus                                   |
+| ----------- | -------------- | --------------------------------------- |
+| **Phase 1** | September 2025 | Core contract design and implementation |
+| **Phase 2** | October 2025   | Frontend interface v1.0                 |
+| **Phase 3** | November 2025  | Auditor functionality                   |
+| **Phase 4** | December 2025  | IPFS integration & risk information     |
 
-```
-FilNoteFEVM/
-├── src/
-│   ├── FilNote.sol          # Main contract
-│   ├── Protocols.sol        # Protocol contract
-│   └── utils/
-│       └── Types.sol        # Data structures
-├── script/                  # Deployment scripts
-├── test/                    # Test files
-├── lib/                     # Dependencies
-└── foundry.toml            # Foundry configuration
-```
+📖 **Detailed Timeline**: See [DEVELOPMENT_TIMELINE.md](./DEVELOPMENT_TIMELINE.md)
 
-### Dependencies
+---
 
-- OpenZeppelin Contracts (Ownable, ReentrancyGuard, Math)
-- Forge Std
-- Filecoin Solidity API
+## 🔗 Related Repositories
 
-### Linting
+| Repository                                                          | Description          | Tech Stack                  |
+| ------------------------------------------------------------------- | -------------------- | --------------------------- |
+| [**FilNoteFEVMFront**](https://github.com/filnote/FilNoteFEVMFront) | Frontend application | Quasar (Vue 3 + TypeScript) |
+| [**FilNoteFEVMAPI**](https://github.com/filnote/FilNoteFEVMAPI)     | Backend API service  | NestJS + TypeScript         |
 
-```bash
-# Format code
-yarn prettier
+---
 
-# Check formatting
-yarn prettier:check
+## 🔗 Useful Links
 
-# Lint Solidity
-yarn solhint
+| Resource             | Link                                                                        |
+| -------------------- | --------------------------------------------------------------------------- |
+| **Testnet Explorer** | [Filecoin Calibration Blockscout](https://filecoin-testnet.blockscout.com/) |
+| **RPC Endpoint**     | `https://api.calibration.node.glif.io/rpc/v1`                               |
+| **Foundry Docs**     | [book.getfoundry.sh](https://book.getfoundry.sh/)                           |
+| **OpenZeppelin**     | [docs.openzeppelin.com](https://docs.openzeppelin.com/)                     |
 
-# Run all linting
-yarn lint
-```
+---
 
-### Testing
+## 📄 License
 
-```bash
-forge test
-```
+This project is licensed under the **MIT License** - see the [LICENSE](./LICENSE) file for details.
 
-## Configuration
+---
 
-### Foundry Configuration
+## 🤝 Contributing
 
-The project uses Foundry with the following key settings:
+Contributions are welcome! Please ensure:
 
-- Solidity version: `0.8.22`
-- Optimizer: Enabled (200 runs)
-- Via IR: Enabled
-- Chain ID: 314159 (Calibration testnet)
+- ✅ Code follows project linting standards
+- ✅ All functions include appropriate tests
+- ✅ Documentation is updated
+- ✅ Security best practices are followed
 
-See `foundry.toml` for full configuration.
+---
 
-## License
+<div align="center">
 
-MIT License - see [LICENSE](./LICENSE) file for details.
+**Built with ❤️ on Filecoin EVM**
 
-## Links
+[⬆ Back to Top](#-filnote)
 
-- **Testnet Explorer**: [Filecoin Calibration Blockscout](https://filecoin-testnet.blockscout.com/)
-- **RPC Endpoint**: https://api.calibration.node.glif.io/rpc/v1
-- **Foundry Documentation**: https://book.getfoundry.sh/
-
-## Contributing
-
-Contributions are welcome! Please ensure all code follows the project's linting standards and includes appropriate tests.
+</div>
