@@ -44,8 +44,10 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
     uint64[] private _allNoteIds;
     uint256 private _platformFee;
     uint256 public constant MAX_LIMIT = 100;
+    uint256 public constant MAX_TARGET_AMOUNT = 1_000_000_000 ether;
     address private _platformFeeRecipient;
-    address[] private _auditors;
+    mapping(address => bool) private _isAuditor;
+    address[] private _auditorsList;
 
     mapping(uint64 => Types.Note) internal _notes;
     mapping(address => uint64[]) internal _notesByCreator;
@@ -94,21 +96,17 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
 
     /**
      * @notice Check if an auditor is in the list of auditors [中文: 检查一个审计员是否在审计员列表中]
-     * @dev Iterates through the auditors array to find a match [中文: 遍历审计员数组查找匹配项]
+     * @dev Checks if the given address is an auditor [中文: 检查给定地址是否为审计员]
      * @param auditor The address of the auditor to check [中文: 要检查的审计员地址]
      * @return bool True if the auditor is in the list, false otherwise [中文: 如果审计员在列表中返回true，否则返回false]
      * @custom:permission Public function, anyone can call [中文: 公共函数，任何人都可以调用]
-     * @custom:gas-optimization Uses unchecked arithmetic for gas efficiency [中文: 使用未检查算术以提高gas效率]
      */
     function isAuditor(address auditor) public view returns (bool) {
-        for (uint256 i = 0; i < _auditors.length; i++) {
-            if (_auditors[i] == auditor) return true;
-        }
-        return false;
+        return _isAuditor[auditor];
     }
     /**
      * @notice Add an auditor to the list of auditors [中文: 添加一个审计员到审计员列表中]
-     * @dev Adds a new auditor address to the auditors array and emits an event [中文: 将新的审计员地址添加到审计员数组并发出事件]
+     * @dev Adds a new auditor address and emits an event [中文: 添加新的审计员地址并发出事件]
      * @param auditor The address of the auditor to add [中文: 要添加的审计员地址]
      * @custom:permission Only contract owner can call [中文: 只有合约所有者可以调用]
      * @custom:reverts Types.InvalidAddress() if auditor is zero address [中文: 如果审计员为零地址则回滚Types.InvalidAddress()]
@@ -117,13 +115,14 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
      */
     function addAuditor(address auditor) external onlyOwner {
         if (auditor == address(0)) revert Types.InvalidAddress();
-        if (isAuditor(auditor)) revert Types.AuditorAlreadyExists();
-        _auditors.push(auditor);
+        if (_isAuditor[auditor]) revert Types.AuditorAlreadyExists();
+        _isAuditor[auditor] = true;
+        _auditorsList.push(auditor);
         emit AuditorUpdated(auditor, true);
     }
     /**
      * @notice Remove an auditor from the list of auditors [中文: 从审计员列表中移除一个审计员]
-     * @dev Removes an auditor from the auditors array using swap-and-pop pattern [中文: 使用交换和弹出模式从审计员数组中移除审计员]
+     * @dev Removes an auditor using swap-and-pop pattern [中文: 使用交换和弹出模式移除审计员]
      * @param auditor The address of the auditor to remove [中文: 要移除的审计员地址]
      * @custom:permission Only contract owner can call [中文: 只有合约所有者可以调用]
      * @custom:reverts Types.InvalidAddress() if auditor is zero address [中文: 如果审计员为零地址则回滚Types.InvalidAddress()]
@@ -132,11 +131,14 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
      */
     function removeAuditor(address auditor) external onlyOwner {
         if (auditor == address(0)) revert Types.InvalidAddress();
-        if (!isAuditor(auditor)) revert Types.AuditorNotExists();
-        for (uint256 i = 0; i < _auditors.length; i++) {
-            if (_auditors[i] == auditor) {
-                _auditors[i] = _auditors[_auditors.length - 1];
-                _auditors.pop();
+        if (!_isAuditor[auditor]) revert Types.AuditorNotExists();
+        _isAuditor[auditor] = false;
+        // 从数组中移除（使用 swap-and-pop 模式）
+        uint256 length = _auditorsList.length;
+        for (uint256 i = 0; i < length; i++) {
+            if (_auditorsList[i] == auditor) {
+                _auditorsList[i] = _auditorsList[length - 1];
+                _auditorsList.pop();
                 break;
             }
         }
@@ -151,7 +153,7 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
      * @custom:gas-optimization Returns memory array for gas efficiency [中文: 返回内存数组以提高gas效率]
      */
     function getAuditors() public view returns (address[] memory) {
-        return _auditors;
+        return _auditorsList;
     }
 
     /**
@@ -277,7 +279,7 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
      * @param borrowingDays The number of days for the borrowing period [中文: 借款期间的天数]
      * @return uint64 The unique ID of the created note [中文: 创建的票据的唯一ID]
      * @custom:permission Public function, anyone can call [中文: 公共函数，任何人都可以调用]
-     * @custom:reverts Types.InvalidTargetAmount() if targetAmount is zero or negative [中文: 如果目标金额为零或负数则回滚Types.InvalidTargetAmount()]
+     * @custom:reverts Types.InvalidTargetAmount() if targetAmount is zero, negative, or exceeds MAX_TARGET_AMOUNT [中文: 如果目标金额为零、负数或超过MAX_TARGET_AMOUNT则回滚Types.InvalidTargetAmount()]
      * @custom:reverts Types.InterestRateOutOfRange() if interest rate is invalid [中文: 如果利率无效则回滚Types.InterestRateOutOfRange()]
      * @custom:reverts Types.InvalidBorrowingDays() if borrowing days are invalid [中文: 如果借款天数无效则回滚Types.InvalidBorrowingDays()]
      * @custom:emits NoteCreated event with note details [中文: 发出包含票据详情的NoteCreated事件]
@@ -290,6 +292,8 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
         uint16 borrowingDays
     ) public returns (uint64) {
         if (targetAmount <= 0) revert Types.InvalidTargetAmount();
+        if (targetAmount > MAX_TARGET_AMOUNT)
+            revert Types.InvalidTargetAmount();
         if (interestRateBps > 10_000 || interestRateBps <= 0)
             revert Types.InterestRateOutOfRange();
         if (borrowingDays <= 0 || borrowingDays > 1000)
