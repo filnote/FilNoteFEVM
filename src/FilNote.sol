@@ -291,7 +291,7 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
         uint16 interestRateBps,
         uint16 borrowingDays
     ) public returns (uint64) {
-        if (targetAmount <= 0) revert Types.InvalidTargetAmount();
+        if (targetAmount == 0) revert Types.InvalidTargetAmount();
         if (targetAmount > MAX_TARGET_AMOUNT)
             revert Types.InvalidTargetAmount();
         if (interestRateBps > 10_000 || interestRateBps <= 0)
@@ -347,6 +347,11 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
      * @custom:reverts Types.TransferFailed() if platform fee transfer fails [中文: 如果平台费用转账失败则回滚Types.TransferFailed()]
      * @custom:emits Investment event with investment details [中文: 发出包含投资详情的Investment事件]
      * @custom:emits WithdrawPlatformFee event with fee details [中文: 发出包含费用详情的WithdrawPlatformFee事件]
+     * @custom:security Uses Math.mulDiv for precise platform fee calculation to prevent precision loss [中文: 使用Math.mulDiv进行精确的平台费用计算以防止精度损失]
+     * @custom:security Follows CEI pattern: state updates before external calls [中文: 遵循CEI模式：在外部调用之前更新状态]
+     * @custom:security expiryTime calculation: block.timestamp + (borrowingDays * 1 days) is safe as borrowingDays is limited to 1000 [中文: expiryTime计算：block.timestamp + (borrowingDays * 1 days)是安全的，因为borrowingDays限制为1000]
+     * @custom:security Protocol contract creation failure will revert automatically [中文: 协议合约创建失败将自动回滚]
+     * @custom:note Platform fee is calculated using mulDiv to ensure precision, any rounding goes to creator [中文: 平台费用使用mulDiv计算以确保精度，任何舍入都归创建者所有]
      */
     function invest(
         uint64 id
@@ -451,6 +456,8 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
      * @custom:reverts Types.InvalidNoteStatus() if note is not in ACTIVE status [中文: 如果票据不在ACTIVE状态则回滚Types.InvalidNoteStatus()]
      * @custom:reverts Types.NotPermission() if caller is not the protocol contract [中文: 如果调用者不是协议合约则回滚Types.NotPermission()]
      * @custom:emits NoteStatusChanged event with COMPLETED status [中文: 发出包含COMPLETED状态的NoteStatusChanged事件]
+     * @custom:security Only called by protocol contract after successful investor withdrawal [中文: 仅在投资者成功提取后由协议合约调用]
+     * @custom:security State change is atomic and cannot be reverted once completed [中文: 状态更改是原子的，一旦完成就无法回滚]
      */
     function completeNote(uint64 id) external noteExists(id) returns (uint64) {
         Types.Note storage note = _notes[id];
@@ -471,6 +478,8 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
      * @custom:reverts Types.InvalidNoteStatus() if note is not in ACTIVE status [中文: 如果票据不在ACTIVE状态则回滚Types.InvalidNoteStatus()]
      * @custom:reverts Types.NotPermission() if caller is not the protocol contract [中文: 如果调用者不是协议合约则回滚Types.NotPermission()]
      * @custom:emits NoteStatusChanged event with DEFAULTED status [中文: 发出包含DEFAULTED状态的NoteStatusChanged事件]
+     * @custom:security Only called by protocol contract when pool balance is insufficient [中文: 仅在池余额不足时由协议合约调用]
+     * @custom:security State change is atomic and cannot be reverted once defaulted [中文: 状态更改是原子的，一旦违约就无法回滚]
      */
     function defaultNote(uint64 id) external noteExists(id) returns (uint64) {
         Types.Note storage note = _notes[id];
@@ -491,8 +500,10 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
      * @custom:modifier Uses onlyOwner to restrict access [中文: 使用onlyOwner限制访问]
      * @custom:modifier Uses noteExists to ensure note exists [中文: 使用noteExists确保票据存在]
      * @custom:reverts Types.InvalidNoteStatus() if note is not in ACTIVE status [中文: 如果票据不在ACTIVE状态则回滚Types.InvalidNoteStatus()]
+     * @custom:reverts Types.InvalidAddress() if protocol contract address is zero [中文: 如果协议合约地址为零则回滚Types.InvalidAddress()]
      * @custom:emits NoteStatusChanged event with STOP status [中文: 发出包含STOP状态的NoteStatusChanged事件]
      * @custom:security Calls stopProtocol() on the protocol contract [中文: 在协议合约上调用stopProtocol()]
+     * @custom:security Validates protocol contract address before calling [中文: 在调用前验证协议合约地址]
      */
     function stopNote(
         uint64 id
@@ -500,6 +511,7 @@ contract FilNoteContract is Ownable, ReentrancyGuard {
         Types.Note storage note = _notes[id];
         if (note.status != uint8(Types.NoteStatus.ACTIVE))
             revert Types.InvalidNoteStatus();
+        if (note.protocolContract == address(0)) revert Types.InvalidAddress();
         IProtocolsContract(note.protocolContract).stopProtocol();
         note.status = uint8(Types.NoteStatus.STOP);
         emit NoteStatusChanged(id, uint8(Types.NoteStatus.STOP));
