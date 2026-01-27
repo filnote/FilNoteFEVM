@@ -212,6 +212,20 @@ forge create src/FilNote.sol:FilNoteContract \
 
 **Deployed Address**: [`0xD88dB8719f066a88F7FA67Ce7761b428f95B7C30`](https://filecoin-testnet.blockscout.com/address/0xD88dB8719f066a88F7FA67Ce7761b428f95B7C30?tab=read_contract)
 
+#### Filecoin Mainnet
+
+```bash
+forge create src/FilNote.sol:FilNoteContract \
+  --rpc-url https://api.node.glif.io/rpc/v1 \
+  --private-key <PRIVATE_KEY> \
+  --broadcast \
+  --verify \
+  --verifier sourcify \
+  -vvvv
+```
+
+**Deployed Address**: [`0x13C547f76E9C979e160125Fe9dfA84Df0d547c1E`](https://filfox.info/en/address/0x13C547f76E9C979e160125Fe9dfA84Df0d547c1E)
+
 ---
 
 ## 📖 Contract Details
